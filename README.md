@@ -16,3 +16,7 @@
 >>-Dizer se houve GPF ou não.
 >
 > Tudo isto pro modo Protegido.
+
+### CALENDÁRIO DE ENCONTROS
+
+19/01/2025 - PRIMEIRO ENCONTRO DO PROJETO: Alinhamento de Tarefas. 

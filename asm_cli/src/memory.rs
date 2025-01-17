@@ -79,3 +79,5 @@ pub fn initiate_working_env() -> ((u16,u16,u16,u16),((&'static str,bool,u32,u32)
     return ((segment_selectors.cs,segment_selectors.ss,segment_selectors.ds,segment_selectors.es),(code_segment_data
         ,stack_segment_data,data_segment_data,extra_segment_data),work_memory, main_registers, offsets, flag); 
 }
+
+
