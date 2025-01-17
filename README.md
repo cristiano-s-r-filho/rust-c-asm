@@ -14,4 +14,5 @@
 >> Produzir o fluxo de barramentos.\
 >> Descrever os estados dos registradores, iniciais e finais.\
 >> Dizer se houve GPF ou não.\
+>
 > Tudo isto pro modo Protegido.
