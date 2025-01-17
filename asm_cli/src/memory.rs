@@ -1,21 +1,15 @@
 pub mod main_memory; 
 pub mod registers; 
 // USING CRATE's FUNCTIONALITYS; 
-use crate::memory::main_memory::MainMemory;
+use crate::memory::main_memory::WorkMemory;
 use crate::memory::registers::MainRegisters; 
 use crate::memory::registers::OffsetRegisters;
 use crate::memory::registers::SegmentRegisters;
 use crate::memory::registers::EFLAG;
 // DECLARING WORKING CONSTANTS 
-pub const SEGMENT_SIZE:usize = u16::MAX as usize;
-pub const CODE_BEGIN: usize = 0;
-pub const STACK_BEGIN: usize = CODE_BEGIN + SEGMENT_SIZE; 
-pub const DATA_BEGIN: usize = STACK_BEGIN + SEGMENT_SIZE; 
-pub const EXTRA_BEGIN: usize = DATA_BEGIN + SEGMENT_SIZE; 
-pub const END_OF_TASK_SPACE: usize = EXTRA_BEGIN + SEGMENT_SIZE;
 // generate functions
-fn generate_main_memory() -> MainMemory {
-    let work_memory:MainMemory = MainMemory::new();
+fn generate_work_memory() -> WorkMemory {
+    let work_memory:WorkMemory = WorkMemory::new();
     return work_memory;
 }
 fn generate_main_registers() -> MainRegisters {
@@ -31,22 +25,26 @@ fn generate_offsets() -> OffsetRegisters {
     return offsets; 
 }
 pub fn initiate_working_env() -> (u16,u16,u16,u16) {
-    // Main memory e Register declaration and initialization; 
-    let work_memory:MainMemory = generate_main_memory();
+    // Register declaration and initialization; 
     let mut main_registers: MainRegisters = generate_main_registers(); 
     let mut segment_selectors: SegmentRegisters = generate_segment_selector(); 
     let mut offsets: OffsetRegisters = generate_offsets();
     let mut flag: EFLAG = EFLAG::new(); 
     // Define memory blocks for task - Code(STATICS TEXT), STACK, DATA e EXTRA    
     // For now it will be a hard-coded begin, but that MUST be changed after
-    let code_segment:&[u32] = &work_memory.cells[0..SEGMENT_SIZE]; 
-    let stack_segment:&[u32] = &work_memory.cells[STACK_BEGIN..DATA_BEGIN-1];
-    let data_segment:&[u32] = &work_memory.cells[DATA_BEGIN..EXTRA_BEGIN-1];
-    let extra_segment:&[u32] = &work_memory.cells[EXTRA_BEGIN..END_OF_TASK_SPACE];
-    segment_selectors.write_to_register(String::from("cs"), code_segment[0] as u16); 
-    segment_selectors.write_to_register(String::from("ss"), stack_segment[0] as u16); 
-    segment_selectors.write_to_register(String::from("ds"), data_segment[0] as u16);
-    segment_selectors.write_to_register(String::from("es"), extra_segment[0] as u16);  
+    let mut code_segment:WorkMemory = generate_work_memory(); 
+    let mut stack_segment:WorkMemory = generate_work_memory(); 
+    let mut data_segment:WorkMemory= generate_work_memory(); 
+    let mut extra_segment:WorkMemory = generate_work_memory(); 
+    code_segment.write(0,20);
+    stack_segment.write(0,21);
+    data_segment.write(0,23);
+    extra_segment.write(0,24);
+    // SEGMENT SELECTOR INIT
+    segment_selectors.write_to_register(String::from("cs"), code_segment.cells[0] as u16); 
+    segment_selectors.write_to_register(String::from("ss"), stack_segment.cells[0] as u16); 
+    segment_selectors.write_to_register(String::from("ds"), data_segment.cells[0] as u16);
+    segment_selectors.write_to_register(String::from("es"), extra_segment.cells[0] as u16);  
     offsets.write_to_register(String::from("eip"), segment_selectors.cs as u32);
     main_registers.quick_start((0,20,32,15));
     flag.over_flow_test();
