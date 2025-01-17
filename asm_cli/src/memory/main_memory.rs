@@ -1,12 +1,12 @@
 // PROTECTED Mode MEMORY implementation
-const MEMORY_MAX_SIZE: usize = u16::MAX as usize + 1; 
+const MEMORY_MAX_SIZE: u32 = (u32::MAX)/2; 
 pub struct WorkMemory {
     pub cells: Vec<u32>
 }
-impl WorkMemory {
+impl WorkMemory{
     pub fn new() -> Self {
        WorkMemory {
-        cells: vec![0;MEMORY_MAX_SIZE]
+        cells: vec![0;MEMORY_MAX_SIZE as usize]
        }
     }
     // Writing with PHYSICAL Adresses
