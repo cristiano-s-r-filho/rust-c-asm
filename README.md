@@ -11,7 +11,7 @@
 ### REQUISITOS DO PROJETO
 
 > Precisamos, dado um arquivo de texto com instruções ASMx86_32:  
->> Produzir o fluxo de barramentos
->> Descrever os estados dos registradores, iniciais e finais  
->> Dizer se houve GPF ou não  
+> > Produzir o fluxo de barramentos.
+> > Descrever os estados dos registradores, iniciais e finais.
+> > Dizer se houve GPF ou não.
 > Tudo isto pro modo Protegido.
