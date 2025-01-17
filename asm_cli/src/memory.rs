@@ -8,7 +8,7 @@ use crate::memory::registers::SegmentRegisters;
 use crate::memory::registers::EFLAG;
 // DECLARING WORKING CONSTANTS - STARTS and ENDS for the segments.
 pub const SEGMENT_SIZE:usize = u16::MAX as usize; 
-pub const CODE_HEAD:usize = 0;
+pub const CODE_HEAD:usize = 0xC0000;
 pub const CODE_TAIL:usize = (CODE_HEAD + SEGMENT_SIZE) as usize;  
 pub const STACK_HEAD:usize = (CODE_TAIL + 1 ) as usize; 
 pub const STACK_TAIL:usize = (STACK_HEAD + SEGMENT_SIZE) as usize; 
