@@ -1,0 +1,10 @@
+C:\Users\Cristiano Santos\Desktop\rust-c-asm\asm_cli\target\debug\deps\libcolored-5f3fac96c6ae4cc8.rmeta: C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src/lib.rs C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src\color.rs C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src\control.rs C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src\error.rs C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src\style.rs C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src\customcolors.rs
+
+C:\Users\Cristiano Santos\Desktop\rust-c-asm\asm_cli\target\debug\deps\colored-5f3fac96c6ae4cc8.d: C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src/lib.rs C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src\color.rs C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src\control.rs C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src\error.rs C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src\style.rs C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src\customcolors.rs
+
+C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src/lib.rs:
+C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src\color.rs:
+C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src\control.rs:
+C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src\error.rs:
+C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src\style.rs:
+C:\Users\Cristiano\ Santos\.cargo\registry\src\index.crates.io-6f17d22bba15001f\colored-3.0.0\src\customcolors.rs:

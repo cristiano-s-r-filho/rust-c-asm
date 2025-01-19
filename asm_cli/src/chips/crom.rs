@@ -1,3 +1,6 @@
+use inline_colorization::*;
+use colored::Colorize;
+
 // IMPLEMENTATION OF A SIMULATION OF VIRTUAL CRegisters, Basic Tables AND ROM - NOT actual virtual memory
 // PLEASE DO NOT TRY TO USE IT AS SUCH -> IT'S ALL A SIMULATION.
 pub struct CRegisters {
@@ -11,7 +14,7 @@ pub struct CRegisters {
     pub cr7:u32     
 }
 // Observer for a specific CRegister.
-pub const MAX_EVENTS_LOGS: u16 = (u16::MAX);
+pub const MAX_EVENTS_LOGS: usize = (0x400) as usize;
 pub struct  CRObserver {
     name:   &'static str,
     status: CRSTATUS,
@@ -20,53 +23,71 @@ pub struct  CRObserver {
     logs: Logs
 }
 struct Logs {
-    logs: vec![(&'static str,(CRSTATUS, u32, bool),u32);MAX_EVENTS_LOGS],
+    logs:Vec<(&'static str, CRSTATUS, u32,bool)>,
     current: u16
 }
 impl Logs {
     pub fn init_new() -> Self {
         Logs {
-            logs: vec![0; MAX_EVENTS_LOGS],
+            logs: vec![("NULL",CRSTATUS::BORN,0,false); MAX_EVENTS_LOGS],
             current: 0,  
         }
     }
     pub fn prim_log(&mut self) {
-        self.logs[0] = ("PRIM",(CRSTATUS::BORN,0,false), 1);
+        self.logs[0] = ("PRIM",CRSTATUS::BORN,0,false);
         self.current += 1;   
     }
-    pub fn search_log(&mut self, log_id: u32) -> ((&'static str, CRSTATUS, u32, bool),u32) {
+    pub fn search_log(&mut self, log_id: usize) -> ((&'static str, CRSTATUS, u32, bool),u32) {
         // Linear search for now seems enough...
-        if (log_id != 1 && log_id != MAX_EVENTS_LOGS) {
-            if self.logs[log_id] != () {
-                return (self.logs[log_id],log_id+1); 
+        if log_id != 1 && log_id != MAX_EVENTS_LOGS {
+            if self.logs[log_id] != ("NULL",CRSTATUS::BORN,0,false) {
+                // We only clone the value here because tuples don't implement copy trait.
+                // However we may change into a structure based comunication format... 
+                return (self.logs[log_id].clone(),(log_id as u32) + 1); 
             } else {
-                return ((),0); 
+                return (("NULL",CRSTATUS::BORN,0,false),0); 
             }
         } else {
-            return (self.logs[0],0);
+            return (self.logs[0].clone(),0);
         }
     } 
     pub fn update_logs(&mut self, log: (&'static str, CRSTATUS, u32, bool)) {
-        let currents_logs = self.search_log(self.current);
-        let next = currents_logs.1; 
+        let currents_logs = self.search_log(self.current as usize);
+        let next = (currents_logs.1) as usize; 
         self.logs[next] = log;
     } 
 
 }
+// Gettin responses from terminal.S
+pub fn get_response() -> bool {
+    let mut input: String = String::new(); 
+    std::io::stdin().read_line(&mut input).expect("ERR: Cannot read terminal input"); 
+    let response:bool; 
+    if &input == &String::from("Y") {
+        response = true;
+    } else if &input == &String::from("N") {
+        response = false; 
+    } else {
+        response = true;  
+    } 
+    return  response;
+    
+}
 
 impl CRObserver {
-    fn inc_uptime(&mut self) {
+    pub fn inc_uptime(&mut self) {
         self.uptime += 1;  
     }
-    fn forward_status(&mut self) {
-       match CRCONTENT {
+    pub fn forward_status(&mut self) {
+       let contact = &self.resume; 
+       match contact {
             CRCONTENT::BORN => self.status = CRSTATUS::BORN,
-            CRCONTENT::CONTROLBIT([0,32]) => self.status = CRSTATUS::DECIDING, 
+            CRCONTENT::CONTROLBIT(_) => self.status = CRSTATUS::DECIDING, 
             CRCONTENT::ADRESS(_) => self.status = CRSTATUS::UP  
        } 
     }
     pub fn get_status(&mut self) -> (CRSTATUS,u32,bool) {
-        let status = self.status;
+        let status = &self.status;
         let uptime = self.uptime;
         let has_stopped:bool; 
         if self.status == CRSTATUS::DECIDING {
@@ -74,39 +95,60 @@ impl CRObserver {
         } else  {
             has_stopped = false;
         }
-        return (status,uptime,has_stopped); 
+        return (*status,uptime,has_stopped); 
     }
     // EVENT FUNCTION - PERIODIC STATUS
     // WARNING! THIS is a TEST! PLEASE DON'T USE IT for anything yet.   
-    pub fn event_ctrl_status_sender(&mut self, period: u32, stop: bool) -> (&'static str,(CRSTATUS, u32, bool),u16) {
-        let event_name = "STATUS_REPORT"; 
-        let ctrl_id:u16; 
-        for i in (0..period) {
-            if (stop == false) {
-                ctrl_id += 1; 
-                return (event_name,self.get_status(),ctrl_id);
-            } else {
-                break;
-            }
-        }
+    pub fn event_ctrl_status_sender(&mut self) -> ((&'static str,CRSTATUS, u32, bool),u16) {
+        let event_name = self.name; 
+        let mut ctrl_id:u16 = (self.uptime as u16) + 1; 
+        ctrl_id += 1; 
+        let response = (event_name, self.get_status().0, self.get_status().1, self.get_status().2); 
+        return (response,ctrl_id);
     }
-
-    pub fn initiate_events(&mut self, cycle_limit:u16, pause:bool) {
+    pub fn initiate_events(&mut self, cycle_limit:u16) {
         // initate all of the powers at be.
         let mut counter:u16 = 0;
-        while counter != cycle_limit && stop = false{
-            self.logs.update_logs(self.event_ctrl_status_sender(cycle_limit, pause));
-            counter += 1  
-        }    
+        let mut pause: bool = false;
+        let event_result = self.event_ctrl_status_sender().0;
+        let current_log = self.logs.current as usize; 
+            let process_log = self.logs.logs[current_log]; 
+            let log_name = process_log.0; 
+            let log_status = process_log.1;
+            let log_number = process_log.2; 
+            let log_state = if process_log.3 == false {"UP"} else {"DOWN"};
+        while (counter != cycle_limit) && (pause == false){
+            self.logs.update_logs(event_result);
+            counter += 1;
+            println!("{}","CR STATUS LOG: ".cyan().bold());
+            println!("{color_cyan}NAME:{color_reset}   {}",log_name); 
+            println!("{color_cyan}STATUS:{color_reset} {:?}",log_status);
+            println!("{color_cyan}UPTIME:{color_reset} {}",log_number);
+            println!("{color_cyan}STATE:{color_reset}  {}",log_state);
+            println!("Continue with log display? (Y) | (N)"); 
+            pause = get_response();
+        } 
+        println!("{style_bold}{color_cyan}+-------------------- LOG ENTRANCE - {color_reset} {color_white}CR:{}{color_reset} {color_cyan}------------------+ {color_reset} {style_reset}",self.name);
+        let mut log_id:u16 = 0;
+        for item in &mut self.logs.logs[0..20]{
+            println!("{style_bold}{color_cyan}LOG-ID:{color_reset}{style_reset} {}", log_id);
+            println!("{color_cyan}NAME:{color_reset}   {}",item.0); 
+            println!("{color_cyan}STATUS:{color_reset} {:?}",item.1);
+            println!("{color_cyan}UPTIME:{color_reset} {}",item.2);
+            println!("{color_cyan}STATE:{color_reset}  {}",item.3);
+            println!("{}", "--------- end ---------".cyan());
+            log_id += 1;
+        }   
     }
 }
-enum CRSTATUS {
+#[derive(Clone,PartialEq,PartialOrd,Copy,Debug)]
+pub enum CRSTATUS {
     BORN,
     UP,
     DOWN,
     DECIDING,
 }
-enum CRCONTENT {
+pub enum CRCONTENT {
     BORN,
     ADRESS(u32),
     CONTROLBIT([bool;32])
@@ -115,11 +157,11 @@ enum CRCONTENT {
 impl CRegisters {
     pub fn new() -> CRegisters {
         let new_cr = CRegisters {
-            cr0:[0;32],
+            cr0:[false;32],
             cr1:0,
             cr2:0,
-            cr3:[0;32],
-            cr4:[0;32],
+            cr3:0,
+            cr4:[false;32],
             cr5:0,
             cr6:0,
             cr7:0,
@@ -164,6 +206,7 @@ impl CRegisters {
                 cr_observer.resume = CRCONTENT::ADRESS(self.cr7); 
             } 
         }
+        cr_observer.logs.prim_log();
         cr_observer.uptime += 1;
         return cr_observer; 
     }
@@ -173,58 +216,69 @@ impl CRegisters {
         let mut cr0_observer = c_registers.generate_cr_observer(0);
         let mut cr1_observer = c_registers.generate_cr_observer(1);
         let mut cr4_observer = c_registers.generate_cr_observer(4);
+        cr0_observer.initiate_events(10);
+        cr1_observer.initiate_events(10);
+        cr4_observer.initiate_events(10);
         let observer_block = (cr0_observer,cr1_observer,cr4_observer); 
         return (c_registers, observer_block);
     }
 }
 
 // SIMULATING DTables BELLOW: 
-pub const  MAX_TABLE_SIZE: u16 = 0x2000;
-enum AcessLeveL {
+pub const  MAX_TABLE_SIZE: usize = 0x2000 as usize;
+#[derive(Clone, Copy,Debug)]
+pub enum AcessLevel {
     KERNEL,
     SYSTEMCALL,
     SHELL,
     USER
 }
-struct DTEntry {
-    selector:&'static str,
-    base: u32,
-    limit: u32,
-    acess_level: AcessLeveL,
+#[derive(Clone,Copy)]
+pub struct DTEntry {
+    pub selector:&'static str,
+    pub base: u32,
+    pub limit: u32,
+    pub acess_level: AcessLevel,
 }  
 pub struct DTable {
-    name: &'static str,
-    content: vec![DTEntry,MAX_FLASH_SIZE],
-    capacity: u16,
+    pub name: &'static str,
+    pub content: Vec<DTEntry>,
+    pub capacity: u16,
 }
 
 impl DTable {
     pub fn new(table_name:&'static str) -> DTable {
-        let mut d_table = DTable {
+        let d_table = DTable {
             name:table_name,
-            content: vec![],
+            content: vec![DTEntry{
+                selector: "NULL",
+                base: 0, 
+                limit: 0, 
+                acess_level: AcessLevel::USER,
+            }; MAX_TABLE_SIZE],
             capacity: 0, 
         };
+        return d_table;
     }
 }
 
-fn generate_gdt() -> DTable {
+pub fn generate_gdt() -> DTable {
     let mut gd_table : DTable = DTable::new("GLOBAL_D_TABLE");
     gd_table.content[0] = DTEntry {
         selector:"CS",
         base:0,
         limit:u16::MAX as u32, 
-        acess_level: AcessLeveL::KERNEL
+        acess_level: AcessLevel::KERNEL
     };
     return gd_table;  
 }
 
-fn generate_idt() -> DTable {
-    let mut id_table: DTable = DTable::new("INTERRUPT_D_TABLE");
+pub fn generate_idt() -> DTable {
+    let id_table: DTable = DTable::new("INTERRUPT_D_TABLE");
     return id_table;
 }
 
 pub fn generate_ldt() -> DTable {
-    let mut ld_table: DTable = DTable::new("LOCAL_D_TABLE");
+    let ld_table: DTable = DTable::new("LOCAL_D_TABLE");
     return ld_table;
 } 
