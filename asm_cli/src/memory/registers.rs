@@ -48,10 +48,10 @@ impl MainRegisters {
         }
     }
     pub fn quick_start(&mut self, values_tuple: (u32,u32,u32,u32)){
-        self.write_to_register(String::from(""), values_tuple.0);
-        self.write_to_register(String::from(""), values_tuple.1);
-        self.write_to_register(String::from(""), values_tuple.2);
-        self.write_to_register(String::from(""), values_tuple.3);
+        self.write_to_register(String::from("eax"), values_tuple.0);
+        self.write_to_register(String::from("ebx"), values_tuple.1);
+        self.write_to_register(String::from("ecx"), values_tuple.2);
+        self.write_to_register(String::from("edx"), values_tuple.3);
     }
 }
 // Segment Selector Register

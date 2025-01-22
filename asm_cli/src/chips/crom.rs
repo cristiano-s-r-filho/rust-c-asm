@@ -101,7 +101,8 @@ impl CRObserver {
     // WARNING! THIS is a TEST! PLEASE DON'T USE IT for anything yet.   
     pub fn event_ctrl_status_sender(&mut self) -> ((&'static str,CRSTATUS, u32, bool),u16) {
         let event_name = self.name; 
-        let mut ctrl_id:u16 = (self.uptime as u16) + 1; 
+        let mut ctrl_id:u16 = 
+        self.uptime as u16; 
         ctrl_id += 1; 
         let response = (event_name, self.get_status().0, self.get_status().1, self.get_status().2); 
         return (response,ctrl_id);
@@ -282,3 +283,113 @@ pub fn generate_ldt() -> DTable {
     let ld_table: DTable = DTable::new("LOCAL_D_TABLE");
     return ld_table;
 } 
+
+#[derive(PartialEq,Clone)]
+pub struct Page {
+    process_id: u32,
+    real_adress: u32,
+    virtual_adress: u32,
+    control_bit: bool, 
+    content: Vec<u32>,
+}
+
+pub const PAGE_SIZE: usize = 0x1000 as usize;
+#[derive(Clone)]
+pub struct PageTable {
+    content: Vec<Page>,
+    capacity: u32,  
+}
+
+impl Page {
+    pub fn new(process:u32,ram_adress:u32, rom_adress:u32, read_only:bool, data: Vec<u32>) -> Self{
+        Page {
+            process_id: process,
+            real_adress: ram_adress,
+            virtual_adress: rom_adress, 
+            control_bit: read_only,
+            content: data,
+        }
+    }
+}
+
+impl PageTable {
+    pub fn new() -> Self {
+        PageTable {
+            content: vec![Page::new(0,0,0,false, vec![0;PAGE_SIZE]);1],
+            capacity: 1
+        }
+    }
+    pub fn search_page(&mut self, proc:u32, ram_adr: u32, rom_adr: u32, c_bit:bool) -> (Page, u32) {
+        let mut adrr = 0;
+        let mut mark: Page = Page::new(proc, ram_adr, rom_adr, c_bit, vec![0;1]); 
+        let reference = proc; 
+        for _i in &self.content[0..self.content.len()]{
+            if self.content[adrr].process_id == reference {
+                if self.content[adrr].real_adress == ram_adr {
+                    if self.content[adrr].virtual_adress == rom_adr {
+                        mark.content = self.content[adrr].content.clone();
+                        break;
+                    }    
+                }
+            } else {
+                adrr += 1;
+            }
+        }
+        return (mark,adrr as u32);
+    }
+    pub fn add_page(&mut self,proc_id: u32, ram_adrr: u32, rom_adrr: u32, ctrl_bit:bool, stuff: Vec<u32>) -> bool{
+        let new_page = Page::new(proc_id, ram_adrr, rom_adrr, ctrl_bit, stuff);
+        let search_page = self.search_page(proc_id, ram_adrr, rom_adrr, ctrl_bit);
+        if new_page == search_page.0 {
+            return false; 
+        } else {
+            let add_adrr = (search_page.1 + 1) as usize; 
+            self.content[add_adrr] = new_page;
+            return true; 
+        } 
+    }
+    pub fn rmv_page(&mut self, proc_id: u32, ram_adrr: u32, rom_adrr: u32, ctrl_bit:bool,) -> bool {
+        let entry_to_rmv = self.search_page(proc_id, ram_adrr, rom_adrr, ctrl_bit);
+        if entry_to_rmv.0 == self.content[entry_to_rmv.1 as usize] {
+            self.content[entry_to_rmv.1 as usize] = Page::new(0, 0, 0, true, vec![0;1]);
+            self.capacity -= 1; 
+            return true; 
+        } else {
+            return false; 
+        }
+    }
+}
+
+pub const MAX_ROM_SIZE: usize = (u32::MAX/32) as usize;
+pub struct EEPROM{
+    acess: bool,
+    cells: Vec<u32>, 
+}
+impl EEPROM {
+    pub fn new() -> Self {
+        EEPROM { acess: true, cells: vec![0;MAX_ROM_SIZE] }
+    }
+
+    pub fn read_from_rom(&mut self, adress: u32) -> u32 {
+        if self.acess == true {
+            let resolve = self.cells[adress as usize];
+            return resolve 
+        } else {
+            return 0; 
+        }
+    }
+
+    pub fn write_to_rom(&mut self, adress: u32, data: u32) {
+        if self.acess == true {
+            self.cells[adress as usize] = data;
+        }
+    }
+
+    pub fn change_acess(&mut self) {
+        if self.acess == false {
+            self.acess = true; 
+        } else {
+            self.acess = false; 
+        }
+    }
+}
