@@ -59,24 +59,31 @@ impl Logs {
 
 }
 // Gettin responses from terminal.S
-pub fn get_response() -> bool {
+pub fn get_response() -> String {
     let mut input: String = String::new(); 
-    std::io::stdin().read_line(&mut input).expect("ERR: Cannot read terminal input"); 
-    let response:bool; 
-    if &input == &String::from("Y") {
-        response = true;
-    } else if &input == &String::from("N") {
-        response = false; 
-    } else {
-        response = true;  
-    } 
-    return  response;
+    std::io::stdin().read_line(&mut input).expect("ERR: Cannot read terminal input");
+    return input;
     
 }
 
 impl CRObserver {
     pub fn inc_uptime(&mut self) {
         self.uptime += 1;  
+    }
+    pub fn decide_status(&mut self) {
+        if self.resume != CRCONTENT::BORN {
+            if self.status == CRSTATUS::DECIDING {
+                self.status = CRSTATUS::UP;
+            } else { 
+                self.status = CRSTATUS::DOWN;
+            }
+        } else {
+            if self.status == CRSTATUS::BORN {
+                self.status = CRSTATUS::DECIDING
+            } else {
+                self.status = CRSTATUS::UP
+            }
+        }
     }
     pub fn forward_status(&mut self) {
        let contact = &self.resume; 
@@ -85,6 +92,12 @@ impl CRObserver {
             CRCONTENT::CONTROLBIT(_) => self.status = CRSTATUS::DECIDING, 
             CRCONTENT::ADRESS(_) => self.status = CRSTATUS::UP  
        } 
+       match self.status {
+           CRSTATUS::BORN => self.status = CRSTATUS::DECIDING,
+           CRSTATUS::DOWN => self.status = CRSTATUS::DECIDING, 
+           CRSTATUS::DECIDING => self.status = CRSTATUS::UP, 
+           CRSTATUS::UP => self.decide_status()  
+       }
     }
     pub fn get_status(&mut self) -> (CRSTATUS,u32,bool) {
         let status = &self.status;
@@ -101,42 +114,49 @@ impl CRObserver {
     // WARNING! THIS is a TEST! PLEASE DON'T USE IT for anything yet.   
     pub fn event_ctrl_status_sender(&mut self) -> ((&'static str,CRSTATUS, u32, bool),u16) {
         let event_name = self.name; 
-        let mut ctrl_id:u16 = 
-        self.uptime as u16; 
+        let mut ctrl_id:u16 = self.uptime as u16;
         ctrl_id += 1; 
+        
         let response = (event_name, self.get_status().0, self.get_status().1, self.get_status().2); 
         return (response,ctrl_id);
     }
     pub fn initiate_events(&mut self, cycle_limit:u16) {
         // initate all of the powers at be.
-        let mut counter:u16 = 0;
-        let mut pause: bool = false;
-        let event_result = self.event_ctrl_status_sender().0;
-        let current_log = self.logs.current as usize; 
-            let process_log = self.logs.logs[current_log]; 
-            let log_name = process_log.0; 
-            let log_status = process_log.1;
-            let log_number = process_log.2; 
-            let log_state = if process_log.3 == false {"UP"} else {"DOWN"};
+        let mut counter: u16 = 0; 
+        let mut pause: bool = false; 
+        self.logs.prim_log();
         while (counter != cycle_limit) && (pause == false){
+            // First: Get Status from Sender: 
+            let event_result = self.event_ctrl_status_sender().0;
+            let log_state = if event_result.3 == false {"UP"} else {"DOWN"};
+            // Second: Print status. 
+            println!("{color_cyan}NAME: {color_red}{}{color_reset} | STATUS:{color_blue}{:?}{color_reset} | UPKEEP: {color_yellow}{}{color_reset} | PAUSED? {color_green}{}{color_reset}", event_result.0, (&event_result.1),event_result.2, log_state);
+            self.decide_status();
+            self.forward_status();
+            // Third: Decision Making
+            if event_result.3 == false {
+                self.inc_uptime();
+            } 
             self.logs.update_logs(event_result);
-            counter += 1;
-            println!("{}","CR STATUS LOG: ".cyan().bold());
-            println!("{color_cyan}NAME:{color_reset}   {}",log_name); 
-            println!("{color_cyan}STATUS:{color_reset} {:?}",log_status);
-            println!("{color_cyan}UPTIME:{color_reset} {}",log_number);
-            println!("{color_cyan}STATE:{color_reset}  {}",log_state);
-            println!("Continue with log display? (Y) | (N)"); 
-            pause = get_response();
+            println!("{color_cyan}Jump to FINAL TABLE? Y | N{color_reset}");
+            let response =  get_response();
+            if (response == "Y") | (response == "y") | (response == "yes")  {
+                pause = true;
+            } else { 
+                pause = false;
+            };
+            // LOOP_STOP?
+            counter += 1;  
         } 
         println!("{style_bold}{color_cyan}+-------------------- LOG ENTRANCE - {color_reset} {color_white}CR:{}{color_reset} {color_cyan}------------------+ {color_reset} {style_reset}",self.name);
         let mut log_id:u16 = 0;
         for item in &mut self.logs.logs[0..20]{
+            let log_state = if item.3 == false {"UP"} else {"DOWN"};
             println!("{style_bold}{color_cyan}LOG-ID:{color_reset}{style_reset} {}", log_id);
             println!("{color_cyan}NAME:{color_reset}   {}",item.0); 
             println!("{color_cyan}STATUS:{color_reset} {:?}",item.1);
             println!("{color_cyan}UPTIME:{color_reset} {}",item.2);
-            println!("{color_cyan}STATE:{color_reset}  {}",item.3);
+            println!("{color_cyan}STATE:{color_reset}  {}",log_state);
             println!("{}", "--------- end ---------".cyan());
             log_id += 1;
         }   
@@ -149,6 +169,7 @@ pub enum CRSTATUS {
     DOWN,
     DECIDING,
 }
+#[derive(Clone, PartialEq, PartialOrd)]
 pub enum CRCONTENT {
     BORN,
     ADRESS(u32),
@@ -214,12 +235,9 @@ impl CRegisters {
 
     pub fn cregisters_quick_start() -> (CRegisters,(CRObserver,CRObserver,CRObserver)) {
         let mut c_registers = CRegisters::new(); 
-        let mut cr0_observer = c_registers.generate_cr_observer(0);
-        let mut cr1_observer = c_registers.generate_cr_observer(1);
-        let mut cr4_observer = c_registers.generate_cr_observer(4);
-        cr0_observer.initiate_events(10);
-        cr1_observer.initiate_events(10);
-        cr4_observer.initiate_events(10);
+        let cr0_observer = c_registers.generate_cr_observer(0);
+        let cr1_observer = c_registers.generate_cr_observer(1);
+        let cr4_observer = c_registers.generate_cr_observer(4);
         let observer_block = (cr0_observer,cr1_observer,cr4_observer); 
         return (c_registers, observer_block);
     }
@@ -286,18 +304,23 @@ pub fn generate_ldt() -> DTable {
 
 #[derive(PartialEq,Clone)]
 pub struct Page {
-    process_id: u32,
-    real_adress: u32,
-    virtual_adress: u32,
-    control_bit: bool, 
-    content: Vec<u32>,
+    pub process_id: u32,
+    pub real_adress: u32,
+    pub virtual_adress: u32,
+    pub control_bit: bool, 
+    pub content: Vec<u32>,
 }
 
 pub const PAGE_SIZE: usize = 0x1000 as usize;
-#[derive(Clone)]
+#[derive(PartialEq,Clone)]
 pub struct PageTable {
-    content: Vec<Page>,
-    capacity: u32,  
+    pub content: Vec<Page>,
+    pub capacity: u32,  
+}
+
+pub struct PageDir {
+    pub content: Vec<PageTable>,
+    pub capacity: u32, 
 }
 
 impl Page {
@@ -337,8 +360,8 @@ impl PageTable {
         }
         return (mark,adrr as u32);
     }
-    pub fn add_page(&mut self,proc_id: u32, ram_adrr: u32, rom_adrr: u32, ctrl_bit:bool, stuff: Vec<u32>) -> bool{
-        let new_page = Page::new(proc_id, ram_adrr, rom_adrr, ctrl_bit, stuff);
+    pub fn add_page(&mut self,proc_id: u32, ram_adrr: u32, rom_adrr: u32, ctrl_bit:bool, stuff: &Vec<u32>) -> bool{
+        let new_page = Page::new(proc_id, ram_adrr, rom_adrr, ctrl_bit, stuff.clone());
         let search_page = self.search_page(proc_id, ram_adrr, rom_adrr, ctrl_bit);
         if new_page == search_page.0 {
             return false; 
@@ -360,10 +383,19 @@ impl PageTable {
     }
 }
 
+impl PageDir {
+    pub fn new() -> Self {
+        PageDir {
+            content: vec![PageTable::new(); 1],
+            capacity: 1 
+        }
+    }
+}
+
 pub const MAX_ROM_SIZE: usize = (u32::MAX/32) as usize;
 pub struct EEPROM{
-    acess: bool,
-    cells: Vec<u32>, 
+    pub acess: bool,
+    pub cells: Vec<u32>, 
 }
 impl EEPROM {
     pub fn new() -> Self {

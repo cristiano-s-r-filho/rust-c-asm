@@ -154,7 +154,10 @@ impl OffsetRegisters {
         } 
     } 
     pub fn increment_program_counter(&mut self){
-        self.eip = &self.eip + 1
+        self.eip = &self.eip + 2;
+    }
+    pub fn decrease_stack_pointer(&mut self) {
+        self.esi = &self.esi - 2; 
     } 
 }    
 pub struct EFLAG { 
