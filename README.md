@@ -4,7 +4,7 @@
 
 ### Made in conjunction with
 
-> [https://github.com/TC071] "Thalles de Carvalho";  
+> [https://github.com/TC071] "Thales de Carvalho";  
 > [https://github.com/pedroacruz06] "Pedro Antonio";  
 > [https://github.com/Meira-Rosa?tab=overview&from=2024-12-01&to=2024-12-31] "Cauã Meira Rosa";  
 
