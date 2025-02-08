@@ -1,7 +1,8 @@
 pub fn inc(){
+    // INC DST; Add 1 to DST
     increment_program_counter();
 
-    let mut adrr = read_from_register("eip");
+    let mut adrr = OffsetRegisters::read_from_register("eip");
     // (TRANSFORMAR EM FISICO?)  CS !!
     forward_to_adress_bus(adrr);
 
@@ -9,21 +10,20 @@ pub fn inc(){
 
     // LER RAM EM ADRR E POR EM DATA BUS !!
     let end1 = get_from_data_bus();
-    write_to_register("edi", end1);
-    write_to_register("esi", end1);
+    OffsetRegisters::write_to_register("edi", end1);
+    OffsetRegisters::write_to_register("esi", end1);
 
     // (TRANSFORMAR EM FÍSICO?)  DS !!
     // POR EM ADRR BUS, LER RAM, POR EM DATA BUS !!
 
     let x = get_from_data_bus();
-    write_to_register("eax", x);
+    MainRegisters::write_to_register("eax", x);
 
     let inc = x + 1;
-    write_to_register("eax", inc);
-    adrr = read_from_register("edi");
+    MainRegisters::write_to_register("eax", inc);
+    adrr = OffsetRegisters::read_from_register("edi");
     // (TRANSFORMAR EM FÍSICO?)  DS !!
     forward_to_adress_bus(adrr);
-    foward_to_data_bus(read_from_register("eax"));
+    foward_to_data_bus(MainRegisters::read_from_register("eax"));
     // ESCREVER INC EM ADRR !!
-
 }
