@@ -1,29 +1,35 @@
-pub fn dec(){
+use crate::registers::*;
+use crate::chips::mmu::*;  
+use crate::memory::main_memory::*;
+pub fn dec(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: MMU){
     // DEC DST; Subtract 1 from DST
-    increment_program_counter();
+    // Enable Mutability 
+    let mut mmu = mmu; 
+    let mut work_env = work_env;
+    work_env.2.increment_program_counter();
 
-    let mut adrr = OffsetRegisters::read_from_register("eip");
+    let mut adrr = work_env.2.read_from_register(String::from("eip"));
     // (TRANSFORMAR EM FISICO?)  CS !!
-    forward_to_adress_bus(adrr);
+    mmu.forward_to_adress_bus(adrr as usize);
 
-    increment_program_counter();
+    work_env.2.increment_program_counter();
 
     // LER RAM EM ADRR E POR EM DATA BUS !!
-    let end1 = get_from_data_bus();
-    OffsetRegisters::write_to_register("edi", end1);
-    OffsetRegisters::write_to_register("esi", end1);
+    let end1 = mmu.get_from_data_bus();
+    work_env.2.write_to_register(String::from("edi"), end1);
+    work_env.2.write_to_register(String::from("esi"), end1);
 
     // (TRANSFORMAR EM FÍSICO?)  DS !!
     // POR EM ADRR BUS, LER RAM, POR EM DATA BUS !!
 
-    let x = get_from_data_bus();
-    MainRegisters::write_to_register("eax", x);
+    let x = mmu.get_from_data_bus();
+    work_env.1.write_to_register(String::from("eax"), x);
 
     let dec = x - 1;
-    MainRegisters::write_to_register("eax", dec);
-    adrr = OffsetRegisters::read_from_register("edi");
+    work_env.1.write_to_register(String::from("eax"), dec);
+    adrr = work_env.2.read_from_register(String::from("edi"));
     // (TRANSFORMAR EM FÍSICO?)  DS !!
-    forward_to_adress_bus(adrr);
-    foward_to_data_bus(MainRegisters::read_from_register("eax"));
+    mmu.forward_to_adress_bus(adrr as usize);
+    mmu.foward_to_data_bus(work_env.1.eax);
     // ESCREVER DEC EM ADRR !!
 }

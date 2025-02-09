@@ -1,6 +1,7 @@
 pub mod memory; 
 pub mod instructions; 
 pub mod chips; 
+use chips::mmu::MMU;
 use colored::Colorize;
 use inline_colorization::*;
 // Memory description at initialization: 
@@ -26,7 +27,7 @@ pub fn describe_cpu_state(work_env:(WorkMemory,MainRegisters,OffsetRegisters,Seg
     let flag_state: EFLAG = work_env.4; 
     println!("{}","MEMORY SUMMARY: ".cyan().bold());
     for item in &memory_stats.cells[CODE_HEAD..CODE_HEAD+10] {
-        println!("{color_cyan}[+] - {color_reset} {color_white}{}{color_reset}", item);
+        println!("{color_cyan}[+] - {color_reset} {color_white}{:#x}{color_reset}", item);
     }
     println!("{}","WHAT GOES BELLOW IS THE STATE OF THE MAIN REGISTERS:".cyan().bold());
     println!("{}","MAIN REGISTERS: ".cyan().bold()); 
@@ -52,4 +53,46 @@ pub fn describe_cpu_state(work_env:(WorkMemory,MainRegisters,OffsetRegisters,Seg
     println!("{style_bold}{color_bright_cyan}ANALYSES COMPLETED! CODE -- {color_reset}{style_reset}{color_white}{:#x}:{:#x}:{:#x}:{:#x}{color_reset}", initial_status_code.0, initial_status_code.1, initial_status_code.2, initial_status_code.3);
 }     
 
+pub fn describe_working_states(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: MMU, data_or_adress: bool, get_or_send: bool) -> bool {
+    let mut mmu_acess = mmu; 
+    let data_bus = mmu_acess.get_from_data_bus(); 
+    let adress_bus = mmu_acess.get_from_adress_bus(); 
+    let eax =  work_env.1.eax;
+    let ebx = work_env.1.ebx; 
+    let ecx = work_env.1.ecx; 
+    let edx = work_env.1.edx; 
+    let eip = work_env.2.eip; 
+    let esp = work_env.2.esp;
+    let ebp = work_env.2.ebp;  
+    let cs = work_env.3.cs;
+    let ss = work_env.3.ss; 
+    let ds = work_env.3.ds; 
+    let es = work_env.3.es; 
+    let flag = if work_env.4.ovfw == true {"YES"} else {"NO"}; 
+    //Conditional Prints. 
+    println!("{color_cyan} <-----------------------> {color_reset}");
+    if data_or_adress == true && get_or_send == true {
+        println!("{color_cyan} -- GOT {color_white}{}{color_reset} FROM DATA BUS -- {color_reset}", data_bus); 
+    } else if data_or_adress == false && get_or_send == true {
+        println!("{color_cyan} -- GOT {color_white}{:#x}{color_reset} FROM ADRESS BUS -- {color_reset}", adress_bus);
+    } else if data_or_adress == true && get_or_send == false {
+        println!("{color_cyan} -- SENT {color_white}{}{color_reset} FROM DATA BUS -- {color_reset}", data_bus);
+    } else if data_or_adress == false && get_or_send == false {
+        println!("{color_cyan} -- SENT {color_white}{:#x}{color_reset} FROM ADRESS BUS -- {color_reset}", adress_bus);
+    }
+    println!("{color_cyan}EAX: {color_bright_red}{}{color_reset} | EBX: {color_bright_blue}{}{color_reset} | ECX: {color_bright_yellow}{}{color_reset} | EDX: {color_bright_green}{}{color_reset}  {color_reset}", eax,ebx,ecx,edx); 
+    println!("{color_cyan}CS: {color_bright_red}{:#x}{color_reset} | SS: {color_bright_blue}{:#x}{color_reset} | DS: {color_bright_yellow}{:#x}{color_reset} | ES: {color_bright_green}{:#x}{color_reset}  {color_reset}", cs,ss,ds,es);
+    println!("{color_cyan}PROGRAM-COUNTER: {color_magenta}{:#x}{color_reset}| STACK-POINTER: {color_white}{:#x}{color_reset} | BASE-POINTER:{color_white}{:#x}{color_reset}{color_reset}", eip, esp, ebp); 
+    if work_env.4.ovfw == false {
+        println!("{color_cyan}GPF?:{color_bright_magenta}{}{color_reset}", flag);
+        println!("{color_cyan}--PROCEED AS USUAL--{color_reset}"); 
+        let gpf = false; 
+        return gpf; 
+    } else {
+        println!("{color_cyan}GPF?:{color_bright_magenta}{}{color_reset}", flag);
+        println!("{color_red}-- THERE HAS BEEN A GPF!!! TERMINATING PROCESS IMEDIATELY");
+        let gpf = true; 
+        return gpf;  
+    }  
+}
 

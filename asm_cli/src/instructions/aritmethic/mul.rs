@@ -1,25 +1,31 @@
-pub fn mul() {
+use crate::registers::*;
+use crate::chips::mmu::*;  
+use crate::memory::main_memory::*;
+pub fn mul(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: MMU) {
     // MUL SRC; Multiply EAX by SRC (unsigned)
-    increment_program_counter();
+    // Mutability enable.
+    let mut work_env = work_env; 
+    let mut mmu = mmu; 
+    work_env.2.increment_program_counter();
 
-    let mut adrr = OffsetRegisters::read_from_register("eip");
+    let adrr = work_env.2.read_from_register(String::from("eip"));
     // (TRANSFORMAR EM FISICO?)  CS !!
-    forward_to_adress_bus(adrr);
+    mmu.forward_to_adress_bus(adrr as usize);
 
-    increment_program_counter();
+    work_env.2.increment_program_counter();
 
     // LER RAM EM ADRR E POR EM DATA BUS !!
-    let end1 = get_from_data_bus();
-    OffsetRegisters::write_to_register("esi", end1);
+    let end1 = mmu.get_from_data_bus();
+    work_env.2.write_to_register(String::from("esi"), end1);
 
     // (TRANSFORMAR EM FÍSICO?)  DS !!
     // POR EM ADRR BUS, LER RAM, POR EM DATA BUS !!
 
-    let val = get_from_data_bus();
-    MainRegisters::write_to_register("ebx", val);
+    let val = mmu.get_from_data_bus();
+    work_env.1.write_to_register(String::from("ebx"), val);
 
-    let x = MainRegisters::read_from_register("eax");
+    let x = work_env.1.eax;
 
     let mul = x * val;
-    MainRegisters::write_to_register("eax", mul);
+    work_env.1.write_to_register(String::from("eax"), mul);
 }

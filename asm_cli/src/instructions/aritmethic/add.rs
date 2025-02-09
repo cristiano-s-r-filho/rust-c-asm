@@ -1,44 +1,51 @@
-pub fn add() {
+use crate::registers::*;
+use crate::chips::mmu::*;  
+use crate::memory::main_memory::*;
+pub fn add(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: MMU) {
     // ADD DST, SRC; Add SRC to DST
-    increment_program_counter();
-
-    let mut adrr = OffsetRegisters::read_from_register("eip");
+    // Mutable borrows here. 
+    let mut work_env = work_env; 
+    let mut mmu = mmu; 
+    // 1. Increment program counter. 
+    work_env.2.increment_program_counter();
+    // 
+    let mut adrr = work_env.2.read_from_register(String::from("eip"));
     // (TRANSFORMAR EM FISICO?)  CS !!
-    forward_to_adress_bus(adrr);
+    mmu.forward_to_adress_bus(adrr as usize);
 
-    increment_program_counter();
+    work_env.2.increment_program_counter();
 
     // LER RAM EM ADRR E POR EM DATA BUS !!
-    let end1 = get_from_data_bus();
-    OffsetRegisters::write_to_register("edi", end1);
-    OffsetRegisters::write_to_register("esi", end1);
+    let end1 = mmu.get_from_adress_bus(); 
+    work_env.2.write_to_register(String::from("edi"), end1);
+    work_env.2.write_to_register(String::from("esi"), end1);
 
     // (TRANSFORMAR EM FÍSICO?)  DS !!
     // POR EM ADRR BUS, LER RAM, POR EM DATA BUS !!
 
-    let x = get_from_data_bus();
-    MainRegisters::write_to_register("eax", x);
+    let x = mmu.get_from_data_bus();
+    work_env.1.write_to_register(String::from("eax"), x);
 
-    adrr = OffsetRegisters::read_from_register("eip");
+    adrr = work_env.2.read_from_register(String::from("eip"));
     // (TRANSFORMAR EM FISICO?)  CS !!
-    forward_to_adress_bus(adrr);
+    mmu.forward_to_adress_bus(adrr as usize);
 
-    increment_program_counter();
+    work_env.2.increment_program_counter();
 
-    let end2 = get_from_data_bus();
-    OffsetRegisters::write_to_register("esi", end2);
+    let end2 = mmu.get_from_data_bus();
+    work_env.2.write_to_register(String::from("esi"), end2);
 
     // (TRANSFORMAR EM FÍSICO?)  DS !!
     // POR EM ADRR BUS, LER RAM, POR EM DATA BUS !!
 
-    let y = get_from_data_bus();
-    MainRegisters::write_to_register("ebx", y);
+    let y = mmu.get_from_data_bus();
+    work_env.1.write_to_register(String::from("ebx"), y);
 
     let sum = x + y;
-    MainRegisters::write_to_register("eax", sum);
-    adrr = OffsetRegisters::read_from_register("edi");
+    work_env.1.write_to_register(String::from("eax"), sum);
+    adrr = work_env.2.read_from_register(String::from("edi"));
     // (TRANSFORMAR EM FÍSICO?)  DS !!
-    forward_to_adress_bus(adrr);
-    foward_to_data_bus(MainRegisters::read_from_register("eax"));
+    mmu.forward_to_adress_bus(adrr as usize);
+    mmu.foward_to_data_bus(work_env.1.eax);
     // ESCREVER SUM EM ADRR !!
 }
