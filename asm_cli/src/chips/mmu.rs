@@ -48,7 +48,7 @@ impl MMU {
     }
 
     pub fn fisical_adress(&mut self, segment_register: &str ,offset: u32, flag: EFLAG ) -> u32 {
-        let mut base_adrr = 0x0;
+        let mut base_adrr = 0x10;
         let mut flag = flag; 
         if segment_register == "cs" {
             base_adrr = CODE_HEAD;

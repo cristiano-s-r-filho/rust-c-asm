@@ -16,7 +16,7 @@ pub fn add(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,E
     // forward_to_adress_bus  
     work_env.2.increment_program_counter();
     let mut adrr = work_env.2.read_from_register(String::from("eip"));
-    // (TRANSFORMAR EM FISICO?)  CS !!
+    adrr = mmu.fisical_adress("cs", addr, EFLAG);
     mmu.forward_to_adress_bus(adrr as usize);
 
     work_env.2.increment_program_counter();
@@ -26,14 +26,14 @@ pub fn add(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,E
     work_env.2.write_to_register(String::from("edi"), end1);
     work_env.2.write_to_register(String::from("esi"), end1);
 
-    // (TRANSFORMAR EM FÍSICO?)  DS !!
+    end1 = mmu.fisical_adress("ds", end1, EFLAG);
     // POR EM ADRR BUS, LER RAM, POR EM DATA BUS !!
 
     let x = mmu.get_from_data_bus();
     work_env.1.write_to_register(String::from("eax"), x);
 
     adrr = work_env.2.read_from_register(String::from("eip"));
-    // (TRANSFORMAR EM FISICO?)  CS !!
+    adrr = mmu.fisical_adress("cs", addr, EFLAG);
     mmu.forward_to_adress_bus(adrr as usize);
 
     work_env.2.increment_program_counter();
@@ -41,7 +41,7 @@ pub fn add(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,E
     let end2 = mmu.get_from_data_bus();
     work_env.2.write_to_register(String::from("esi"), end2);
 
-    // (TRANSFORMAR EM FÍSICO?)  DS !!
+    end2 = mmu.fisical_adress("ds", end2, EFLAG);
     // POR EM ADRR BUS, LER RAM, POR EM DATA BUS !!
 
     let y = mmu.get_from_data_bus();
