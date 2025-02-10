@@ -30,9 +30,9 @@ pub fn add(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,E
     work_env.2.write_to_register(String::from("esi"), end1);
     describe_working_states(work_env, mmu, true, true);
 
-    end1 = mmu.fisical_adress("ds", end1, work_env.4);
-    mmu.forward_to_adress_bus(end1 as usize);
-    // LER RAM EM END1 E POR EM DATA BUS !!
+    adrr = mmu.fisical_adress("ds", end1, work_env.4);
+    mmu.forward_to_adress_bus(adrr as usize);
+    // POR EM ADRR BUS, LER RAM, POR EM DATA BUS !!feito?
 
     let x = mmu.get_from_data_bus();
     work_env.1.write_to_register(String::from("eax"), x);
@@ -51,11 +51,10 @@ pub fn add(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,E
     work_env.2.write_to_register(String::from("esi"), end2);
     describe_working_states(work_env, mmu, true, true);
 
-    end2 = mmu.fisical_adress("ds", end2, work_env.4);
-    mmu.forward_to_adress_bus(end2 as usize);
+    adrr = mmu.fisical_adress("ds", end2, work_env.4);
+    mmu.forward_to_adress_bus(adrr as usize);
     describe_working_states(work_env, mmu, false, false);
-
-    // LER RAM END2 E POR EM DATA BUS !!
+    // POR EM ADRR BUS, LER RAM, POR EM DATA BUS !! feito?
 
     let y = mmu.get_from_data_bus();
     work_env.1.write_to_register(String::from("ebx"), y);
@@ -71,7 +70,7 @@ pub fn add(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,E
         flag.negv = true;
     }
 
-    mmu.fisical_adress("ds", adrr, work_env.4);
+    adrr = mmu.fisical_adress("ds", adrr, work_env.4);
     mmu.forward_to_adress_bus(adrr as usize);
     describe_working_states(work_env, mmu, false, false);
     mmu.foward_to_data_bus(work_env.1.eax);

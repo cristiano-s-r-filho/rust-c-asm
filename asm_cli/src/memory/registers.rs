@@ -160,6 +160,7 @@ impl OffsetRegisters {
         self.esi = &self.esi - 2; 
     } 
 }    
+#[derive(Clone,Copy)]
 pub struct EFLAG { 
     pub ovfw:bool,
     pub zero:bool,
