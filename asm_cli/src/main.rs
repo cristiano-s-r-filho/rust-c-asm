@@ -18,9 +18,7 @@ fn main() {
         println!("{color_cyan}[-] - {chosen_color}{}{color_reset} {color_reset}", i);
         index += 1;
     }
-    let add = "add"; 
-    let end1 = 0x1150; 
-    let end2 = 0x1151; 
+    
     // Loop - Execution cicle - 
     // Take a instruction from the top of execution queue. 
     // Pass it for the ALU. 

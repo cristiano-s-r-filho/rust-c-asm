@@ -1,1 +1,5 @@
+<<<<<<< HEAD
 cargo:rustc-link-search=native=C:\Users\Thales\.cargo\registry\src\index.crates.io-6f17d22bba15001f\windows_x86_64_msvc-0.52.6\lib
+=======
+cargo:rustc-link-search=native=C:\Users\pedro\.cargo\registry\src\index.crates.io-6f17d22bba15001f\windows_x86_64_msvc-0.52.6\lib
+>>>>>>> 03e0402680ba8cafa7f9e58e6035e3e1d27d987c
