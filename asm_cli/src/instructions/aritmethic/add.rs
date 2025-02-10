@@ -6,7 +6,7 @@ use crate::describe_working_states;
 pub fn add(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: MMU, dst: u32, src: u32) {
     // ADD DST, SRC; Add SRC to DST
     // Mutable borrows here. 
-    let mut work_env = work_env; 
+    let mut work_env: (WorkMemory, MainRegisters, OffsetRegisters, SegmentRegisters, EFLAG) = work_env; 
     let mut mmu = mmu; 
     // 1. Increment program counter.
     // increment_program_counter 
@@ -15,7 +15,7 @@ pub fn add(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,E
     // forward_to_data_bus
     // forward_to_adress_bus  
     work_env.2.increment_program_counter();
-    let mut adrr = work_env.2.read_from_register(String::from("eip"));
+    let mut adrr: u32 = work_env.2.read_from_register(String::from("eip"));
     // (TRANSFORMAR EM FISICO?)  CS !!
     mmu.forward_to_adress_bus(adrr as usize);
 
