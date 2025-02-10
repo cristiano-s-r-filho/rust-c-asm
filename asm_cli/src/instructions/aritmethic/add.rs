@@ -26,8 +26,9 @@ pub fn add(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,E
     work_env.2.write_to_register(String::from("edi"), end1);
     work_env.2.write_to_register(String::from("esi"), end1);
 
-    end1 = mmu.fisical_adress("ds", end1, work_env.4);
-    // POR EM ADRR BUS, LER RAM, POR EM DATA BUS !!
+    adrr = mmu.fisical_adress("ds", end1, work_env.4);
+    mmu.forward_to_adress_bus(adrr);
+    // POR EM ADRR BUS, LER RAM, POR EM DATA BUS !!feito?
 
     let x = mmu.get_from_data_bus();
     work_env.1.write_to_register(String::from("eax"), x);
@@ -41,8 +42,9 @@ pub fn add(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,E
     let mut end2 = mmu.get_from_data_bus();
     work_env.2.write_to_register(String::from("esi"), end2);
 
-    end2 = mmu.fisical_adress("ds", end2, work_env.4);
-    // POR EM ADRR BUS, LER RAM, POR EM DATA BUS !!
+    adrr = mmu.fisical_adress("ds", end2, work_env.4);
+    mmu.forward_to_adress_bus(adrr);
+    // POR EM ADRR BUS, LER RAM, POR EM DATA BUS !! feito?
 
     let y = mmu.get_from_data_bus();
     work_env.1.write_to_register(String::from("ebx"), y);
@@ -50,7 +52,7 @@ pub fn add(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,E
     let sum = x + y;
     work_env.1.write_to_register(String::from("eax"), sum);
     adrr = work_env.2.read_from_register(String::from("edi"));
-    // (TRANSFORMAR EM FÍSICO?)  DS !!
+    adrr = mmu.fisical_adress("ds", adrr, work_env.4);
     mmu.forward_to_adress_bus(adrr as usize);
     mmu.foward_to_data_bus(work_env.1.eax);
     // ESCREVER SUM EM ADRR !!
