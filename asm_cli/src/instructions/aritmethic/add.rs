@@ -27,7 +27,7 @@ pub fn add(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,E
     work_env.2.write_to_register(String::from("esi"), end1);
 
     adrr = mmu.fisical_adress("ds", end1, work_env.4);
-    mmu.forward_to_adress_bus(adrr);
+    mmu.forward_to_adress_bus(adrr as usize);
     // POR EM ADRR BUS, LER RAM, POR EM DATA BUS !!feito?
 
     let x = mmu.get_from_data_bus();
@@ -43,7 +43,7 @@ pub fn add(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,E
     work_env.2.write_to_register(String::from("esi"), end2);
 
     adrr = mmu.fisical_adress("ds", end2, work_env.4);
-    mmu.forward_to_adress_bus(adrr);
+    mmu.forward_to_adress_bus(adrr as usize);
     // POR EM ADRR BUS, LER RAM, POR EM DATA BUS !! feito?
 
     let y = mmu.get_from_data_bus();
