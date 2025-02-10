@@ -76,9 +76,9 @@ pub fn describe_working_states(work_env:(WorkMemory,MainRegisters,OffsetRegister
     } else if data_or_adress == false && get_or_send == true {
         println!("{color_cyan} -- GOT {color_white}{:#x}{color_reset} FROM ADRESS BUS -- {color_reset}", adress_bus);
     } else if data_or_adress == true && get_or_send == false {
-        println!("{color_cyan} -- SENT {color_white}{}{color_reset} FROM DATA BUS -- {color_reset}", data_bus);
+        println!("{color_cyan} -- SENT {color_white}{}{color_reset} TO DATA BUS -- {color_reset}", data_bus);
     } else if data_or_adress == false && get_or_send == false {
-        println!("{color_cyan} -- SENT {color_white}{:#x}{color_reset} FROM ADRESS BUS -- {color_reset}", adress_bus);
+        println!("{color_cyan} -- SENT {color_white}{:#x}{color_reset} TO ADRESS BUS -- {color_reset}", adress_bus);
     }
     println!("{color_cyan}EAX: {color_bright_red}{}{color_reset} | EBX: {color_bright_blue}{}{color_reset} | ECX: {color_bright_yellow}{}{color_reset} | EDX: {color_bright_green}{}{color_reset}  {color_reset}", eax,ebx,ecx,edx); 
     println!("{color_cyan}CS: {color_bright_red}{:#x}{color_reset} | SS: {color_bright_blue}{:#x}{color_reset} | DS: {color_bright_yellow}{:#x}{color_reset} | ES: {color_bright_green}{:#x}{color_reset}  {color_reset}", cs,ss,ds,es);

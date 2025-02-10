@@ -3,6 +3,8 @@ use asm_cli::*;
 use chips::{crom::{generate_gdt, AcessLevel}, mmu::MMU};
 use colored::Colorize;
 use inline_colorization::*;
+use std::env; 
+use std::fs; 
 fn main() {
 
     // BEGINNING - NAME PRINTING
