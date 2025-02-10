@@ -1,14 +1,21 @@
 use crate::registers::*;
 use crate::chips::mmu::*;  
 use crate::memory::main_memory::*;
-pub fn add(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: MMU) {
+use crate::describe_working_states; 
+
+pub fn add(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: MMU, dst: u32, src: u32) {
     // ADD DST, SRC; Add SRC to DST
     // Mutable borrows here. 
     let mut work_env = work_env; 
     let mut mmu = mmu; 
-    // 1. Increment program counter. 
+    // 1. Increment program counter.
+    // increment_program_counter 
+    // get_from_data_bus
+    // get_from_adress_bus
+    // forward_to_data_bus
+    // forward_to_adress_bus  
     work_env.2.increment_program_counter();
-    // 
+
     let mut adrr = work_env.2.read_from_register(String::from("eip"));
     // (TRANSFORMAR EM FISICO?)  CS !!
     mmu.forward_to_adress_bus(adrr as usize);

@@ -4,6 +4,8 @@ use chips::{crom::{generate_gdt, AcessLevel}, mmu::MMU};
 use colored::Colorize;
 use inline_colorization::*;
 fn main() {
+
+    // BEGINNING - NAME PRINTING
     println!("{color_cyan} ------ RUST ASM SIMULATOR ------- {color_reset}");
     println!("{color_cyan} MADE WITH SWEAT AND TEARS BY: "); 
     let names = vec!["Cristiano S.R. Filho", "Thales de Carvalho","Cauã M. Rosa", "Carlos Rafael", "Pedro Antonio"];    
@@ -14,10 +16,22 @@ fn main() {
         println!("{color_cyan}[-] - {chosen_color}{}{color_reset} {color_reset}", i);
         index += 1;
     }
+    let add = "add"; 
+    let end1 = 0x1150; 
+    let end2 = 0x1151; 
+    // Loop - Execution cicle - 
+    // Take a instruction from the top of execution queue. 
+    // Pass it for the ALU. 
+    // Wait for execution. 
+    // If GPF: STOP.  
+    // Else : Continue till end of queue. 
+    // GENERATE MMU - GENERAL ENV. - and describe general initial CPU STATE.
     let mut mmu = MMU::new(); 
     let general_env = mmu.start_process_manager(vec![20, 25, 14, 17, 15,10]);
     let work_enviroment = (general_env.0, general_env.1, general_env.3,general_env.2, general_env.4);
     describe_cpu_state(work_enviroment);
+
+    // Global Descriptor Table; 
     let global_table =  generate_gdt();
     println!("{}", "--------------------------- GLOBAL DESCRIPTOR TABLE ----------------------------".cyan().bold());
     for item in &global_table.content[0..20]{
