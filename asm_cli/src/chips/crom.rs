@@ -4,7 +4,6 @@ pub fn get_response() -> String {
     let mut input: String = String::new(); 
     std::io::stdin().read_line(&mut input).expect("ERR: Cannot read terminal input");
     return input;
-    
 }
 
 // SIMULATING DTables BELLOW: 
