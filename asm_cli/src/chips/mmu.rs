@@ -45,4 +45,36 @@ impl MMU {
             
             return (work_memory,main_registers, segment_registers, offsets,flag, mmu)
     }
+    pub fn fisical_adress(&mut self, segment_register: str ,offset: u32, flag: EFLAG ) -> u32 {
+        if segment_register == "cs" {
+            let base_adrr = CODE_HEAD;
+        } else if segment_register == "ss" {
+            let base_adrr = STACK_HEAD;
+        } else if segment_register == "ds" {
+            let base_adrr = DATA_HEAD;
+        } else {
+            return 0; 
+        }
+        
+        let fisc_adrr = base_adrr + (offset as usize);
+        
+        if segment_register == "cs" {
+            if fisc_adrr > CODE_TAIL {
+                EFLAG.ovfw = true;
+            }
+        } else if segment_register == "ss" {
+            if fisc_adrr > STACK_TAIL {
+                EFLAG.ovfw = true;
+            }
+        } else if segment_register == "ds" {
+            if fisc_adrr > DATA_TAIL {
+                EFLAG.ovfw = true;
+            }
+        } else {
+            return 0; 
+        }
+
+        return fisc_adrr;
+
+    }
 }
