@@ -2,6 +2,7 @@ use crate::memory::main_memory::WorkMemory;
 use crate::registers::*;
 use crate::chips::mmu::MMU; 
 use crate::instructions::aritmethic::*;
+use crate::instructions::bit_logic::*;
 use crate::instructions::moves::*;
     
 pub struct ALU {
@@ -21,7 +22,14 @@ impl ALU {
             "inc" => inc::inc(working_env, pro_mmu),
             "mul" => mul::mul(working_env, pro_mmu),
             "neg" => neg::neg(working_env, pro_mmu),
-            "mov" => mov::mov(working_env, pro_mmu), 
+            "and" => and::and(working_env, pro_mmu),
+            "not" => not::not(working_env, pro_mmu),
+            "or" => or::or(working_env, pro_mmu),
+            "xor" => xor::xor(working_env, pro_mmu),
+            "mov" => mov::mov(working_env, pro_mmu),
+            "pop" => pop::pop(working_env, pro_mmu),
+            "push" => push::push(working_env, pro_mmu),
+            "xchg" => xchg::xchg(working_env, pro_mmu),
             _ => self.gpf = true 
         }
     }

@@ -2,10 +2,10 @@ use crate::registers::*;
 use crate::chips::mmu::*;  
 use crate::memory::main_memory::*;
 
-pub fn xor(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: MMU){
+pub fn xor(work_env:&mut(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu:&mut MMU){
 
-    let mut work_env: (WorkMemory, MainRegisters, OffsetRegisters, SegmentRegisters, EFLAG) = work_env; 
-    let mut mmu = mmu; 
+    let work_env:&mut (WorkMemory, MainRegisters, OffsetRegisters, SegmentRegisters, EFLAG) = work_env; 
+    let mmu = mmu; 
 
     work_env.2.increment_program_counter(); // go to instruction address
     
