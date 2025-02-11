@@ -157,7 +157,7 @@ impl OffsetRegisters {
         self.eip = &self.eip + 2;
     }
     pub fn decrease_stack_pointer(&mut self) {
-        self.esi = &self.esi - 2; 
+        self.esp = &self.esp - 2; 
     } 
 }    
 #[derive(Clone,Copy)]
