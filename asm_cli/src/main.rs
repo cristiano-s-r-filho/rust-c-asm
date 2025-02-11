@@ -18,11 +18,7 @@ fn main() {
         index += 1;
     }
     // Prompt User for: 
-    println!("Olá! Preencha o formulário abaixo:"); 
-    // - Full instruction: 4byte intruction adress - instruction - operand 1 - operand2
-    println!("QUAL A INSTRUÇÃO A SER EXECUTADA?");
-    let mut instruction = String::new(); 
-    io::stdin().read_line(&mut instruction).expect("Failed to get instruction!!");    
+    println!("Olá! Preencha o formulário abaixo:");    
     // - Initial code adress. 
     println!("ENDEREÇO INICIAL DO SEGMENTO DE CÓDIGO:"); 
     let mut code_base = String::new(); 
@@ -86,20 +82,48 @@ fn main() {
         Err(_) => extra_init = 0xFFFFF
     }
     let mut process = (init_segment,code_init,stack_init,data_init,extra_init);
-
-    // Loop - Execution cicle - 
-    // Take a instruction from the top of execution queue. 
-    // Pass it for the ALU. 
-    let mut _alu = ALU::new(); 
-    // Wait for execution. 
-    // If GPF: STOP.  
-    // Else : Continue till end of queue. 
-    // GENERATE MMU - GENERAL ENV. - and describe general initial CPU STATE.
+    let mut _alu = ALU::new();
+    // Generate Enviroment: 
     let mut mmu = MMU::new(); 
     let general_env = mmu.start_process_manager(&mut process);
-    let work_enviroment = (general_env.0, general_env.1, general_env.3,general_env.2, general_env.4);
+    let work_enviroment = &mut (general_env.0, general_env.1, general_env.3,general_env.2, general_env.4);
     describe_cpu_state(work_enviroment, mmu);
 
+    // - Full instruction: 4byte intruction adress - instruction - operand 1 - operand2
+    loop {
+        println!("QUAL A INSTRUÇÃO A SER EXECUTADA?");
+        let mut instruction = String::new(); 
+        io::stdin().read_line(&mut instruction).expect("Failed to get instruction!!");  
+        // parse input:
+        let input_vec: Vec<&str> = instruction.split_whitespace().collect(); 
+        // Loop - Execution cicle - 
+        let instruction_adress = input_vec[0]; 
+        let hex_adrr = u32::from_str_radix(instruction_adress, 16);
+        let inst_adrr:u32; 
+        match hex_adrr {
+            Ok(value) => inst_adrr = value,
+            Err(_) => inst_adrr = 0x0001
+        }
+        let opcode = input_vec[1]; 
+        let operands = &input_vec[2..];
+        let num_operands: & mut[u32] = &mut [0,0];
+        let mut index = 0; 
+        for item in operands {
+            let hex_operand = u32::from_str_radix(&item, 16); 
+            match hex_operand {
+                Ok(values) => num_operands[index] = values,
+                Err(_) => num_operands[index] = 0x0
+            }
+            index += 1; 
+        }
+        work_enviroment.2.write_to_register(String::from("eip"), inst_adrr);
+        let mut alu = ALU::new();
+        alu.execute_instruction(work_enviroment, &mut mmu, opcode, num_operands[0], num_operands[1]);
+        if work_enviroment.4.ovfw == true {
+            break; 
+        }
+    }
+    // END of LOOP. 
     // Global Descriptor Table; 
     let global_table =  generate_gdt();
     println!("{}", "--------------------------- GLOBAL DESCRIPTOR TABLE ----------------------------".cyan().bold());

@@ -11,7 +11,7 @@ use memory::registers::OffsetRegisters;
 use memory::registers::SegmentRegisters;
 use memory::registers::EFLAG;
 use memory::*; 
-pub fn describe_cpu_state(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: MMU) {
+pub fn describe_cpu_state(work_env:&mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: MMU) {
     println!("BELLOW HERE GOES A SNAPSHOT THE STATE OF THE CPU:"); 
     let initial_status_code:(u16,u16,u16,u16) = (work_env.3.cs, work_env.3.ss,work_env.3.ds, work_env.3.es);
     // Process work memory blocks that have been statically allocaded.
@@ -20,15 +20,9 @@ pub fn describe_cpu_state(work_env:(WorkMemory,MainRegisters,OffsetRegisters,Seg
     let init_data_block: (&'static str,bool,u32,u32) = slice_segment_data(&"DATA", mmu.data_summary.2 as usize, mmu.data_summary.3,&work_env.0);
     let init_extra_block: (&'static str,bool,u32,u32) = slice_segment_data(&"EXTR", mmu.extra_sumary.2 as usize, mmu.extra_sumary.3,&work_env.0); 
     // GENERAL CONFIGS ON INITIALIZATION;
-    let memory_stats: WorkMemory = work_env.0; 
-    let workbench: MainRegisters = work_env.1; 
-    let work_offsets: OffsetRegisters = work_env.2; 
+    let workbench: &MainRegisters = &work_env.1; 
+    let work_offsets: &OffsetRegisters = &work_env.2; 
     let flag_state: EFLAG = work_env.4; 
-    println!("{}","MEMORY SUMMARY: ".cyan().bold());
-    let pt = init_code_block.2 as usize;
-    for item in &memory_stats.cells[pt..pt+10] {
-        println!("{color_cyan}[+] - {color_reset} {color_white}{:#x}{color_reset}", item);
-    }
     println!("{}","WHAT GOES BELLOW IS THE STATE OF THE MAIN REGISTERS:".cyan().bold());
     println!("{}","MAIN REGISTERS: ".cyan().bold()); 
     println!(" {color_cyan}EAX:{color_reset} {color_red}{}{color_reset}", workbench.eax);
