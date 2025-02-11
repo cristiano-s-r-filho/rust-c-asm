@@ -35,7 +35,7 @@ pub fn push(work_env:&mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegis
     describe_working_states(work_env, mmu, true, true);
 
     let mut top = work_env.2.read_from_register(String::from("esp"));
-    top = top + 2;
+    top = top - 2;
     work_env.2.write_to_register(String::from("esp"), top);
     top = mmu.fisical_adress("ss", top, work_env.4);
     mmu.forward_to_adress_bus(top as usize);
