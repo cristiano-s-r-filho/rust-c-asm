@@ -1,5 +1,5 @@
 // PROTECTED Mode MEMORY implementation
-pub const MEMORY_MAX_SIZE: u32 = (u32::MAX)/2; 
+pub const MEMORY_MAX_SIZE: u32 = (u32::MAX)/64; 
 pub struct WorkMemory {
     pub cells: Vec<u32>
 }

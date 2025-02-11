@@ -2,12 +2,11 @@ use crate::registers::*;
 use crate::chips::mmu::*;  
 use crate::memory::main_memory::*;
 use crate::describe_working_states;
-
-pub fn inc(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: MMU){
+    
+pub fn inc(work_env:&mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: &mut MMU){
     // INC DST; Add 1 to DST
-    let mut work_env = work_env;
-    let mut mmu = mmu; 
-
+    let mmu = mmu; 
+    let work_env = work_env;
     mmu.foward_to_data_bus(0x40 as u32);
     work_env.2.increment_program_counter();
     describe_working_states(work_env, mmu, true, true);

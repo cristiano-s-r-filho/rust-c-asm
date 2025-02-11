@@ -3,11 +3,11 @@ use crate::chips::mmu::*;
 use crate::memory::main_memory::*;
 use crate::describe_working_states;
 
-pub fn mul(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: MMU) {
+pub fn mul(work_env:&mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu:&mut  MMU) {
     // MUL SRC; Multiply EAX by SRC (unsigned)
     // Mutability enable.
-    let mut work_env = work_env; 
-    let mut mmu = mmu; 
+    let work_env = work_env; 
+    let mmu = mmu; 
 
     mmu.foward_to_data_bus(0xF7E0 as u32);
     work_env.2.increment_program_counter();

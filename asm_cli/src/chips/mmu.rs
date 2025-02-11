@@ -1,47 +1,25 @@
 use crate::memory::initiate_working_env;
-use crate::memory::main_memory::{WorkMemory, MEMORY_MAX_SIZE};
+use crate::memory::main_memory::WorkMemory;
 use crate::memory::registers::{MainRegisters, OffsetRegisters, SegmentRegisters, EFLAG};
-<<<<<<< HEAD
-use crate::chips::crom::*; 
-
-=======
-use crate::memory::{CODE_HEAD,CODE_TAIL,STACK_HEAD,STACK_TAIL,DATA_HEAD,DATA_TAIL};
->>>>>>> 03e0402680ba8cafa7f9e58e6035e3e1d27d987c
+ 
 pub struct MMU {
-    controlers: CRegisters, 
-    observers: Vec<CRObserver>,
-    rom: EEPROM, 
+    pub code_summary: (&'static str, bool, u32, u32),
+    pub stack_summary:(&'static str, bool, u32, u32),
+    pub data_summary:(&'static str, bool, u32, u32), 
+    pub extra_sumary: (&'static str, bool, u32, u32), 
     data_bus: u32, 
     adress_bus: u32  
 }
 impl MMU {
     pub fn new() -> Self {
-        let spawn_observers = CRegisters::cregisters_quick_start();
         MMU { 
-            controlers: spawn_observers.0,
-            observers: vec![spawn_observers.1.0,spawn_observers.1.1, spawn_observers.1.2],
-            rom: EEPROM::new(),
+            code_summary: ("null", false, 0x0,0x0),
+            stack_summary:("null", false, 0x0,0x0),
+            data_summary:("null", false, 0x0,0x0),
+            extra_sumary:("null", false, 0x0,0x0),
             data_bus: 0x0,
             adress_bus: 0x0 
         }
-    }
-    pub fn generate_process_id(segment_select: &SegmentRegisters) -> u32 {
-        let mut process_id:u32 = 0; 
-        let mut vector = [1;32];
-        for i in vector  {
-            match (i as f32)%2.0 {
-                0.0 => process_id += segment_select.cs as u32, 
-                _ => process_id *= 2
-            }
-            let inter = [1.0,2.0,4.0,6.0,8.0,10.0,12.0];
-            let index = 0; 
-            if (inter[index + i]%2.0) == 0.0 {
-                vector[index + i] = 1 
-            } else {
-                vector[index + i] = 0;
-            }
-        }
-        return process_id;
     }
     pub fn foward_to_data_bus(&mut self, dt: u32){
         self.data_bus = dt;
@@ -55,87 +33,33 @@ impl MMU {
     pub fn get_from_adress_bus(&mut self) -> u32 {
         return self.adress_bus; 
     }
-    pub fn start_process_manager(&mut self, segment_or_paging: bool, initial_data:Vec<u32>) -> (WorkMemory, MainRegisters, SegmentRegisters, OffsetRegisters, EFLAG, CRegisters, Vec<CRObserver>) {
+    pub fn start_process_manager(&mut self, initial_data:&mut (u32,u32,u32,u32,u32)) -> (WorkMemory, MainRegisters, SegmentRegisters, OffsetRegisters, EFLAG, MMU) {
         let mut mmu = MMU::new(); 
         // First, we need to be able to determine: SEGMENTATION OR PAGINATION?
         // if segment_or_paging == true -> SEGMENTATION ON.  
-        if segment_or_paging == true {
-            let work_env = initiate_working_env(&initial_data); 
-            // define process management for segmentation: 
-            let controlers = mmu.controlers;
-            let mut observers = mmu.observers;
+            let work_env = initiate_working_env(initial_data); 
+            mmu.code_summary = work_env.0.0; 
+            mmu.stack_summary = work_env.0.1; 
+            mmu.data_summary = work_env.0.2; 
+            mmu.extra_sumary = work_env.0.3;
+            // define process management for Segmentation: 
             let work_memory = work_env.1; 
             let main_registers = work_env.2;
             let segment_registers = work_env.3;
             let offsets = work_env.4;
-            let flag = work_env.5; 
-            // Initiate events: z
-            observers[0].initiate_events(10);
-            observers[1].initiate_events(10);
-            observers[2].initiate_events(10);
-            return (work_memory,main_registers, segment_registers, offsets,flag, controlers, observers);
-        } else {
-            // Declare working variables.
-            let mut observers = mmu.observers;
-            let controlers = mmu.controlers; 
-            let mut page_dir = PageDir::new(); 
-            let work_env = initiate_working_env(&initial_data); 
-            let mut work_memory = work_env.1; 
-            let main_registers = work_env.2;
-            let segment_registers = work_env.3;
-            let offsets = work_env.4;
-            let flag = work_env.5; 
-            // First: generate process_id for the first process based on initial segment
-            let process_id = MMU::generate_process_id(&segment_registers); 
-            // println!("PROCESS ID: {}", process_id);
-            // Second: Introduce on  Page Table Directory
-            page_dir.content[0].add_page(process_id, segment_registers.cs as u32, self.rom.cells[0], true, &initial_data); 
-            // Third: Start process on paging mode 
-            let mut adress = 0; 
-            for _i in [0..initial_data.len()] {
-                let d = initial_data[adress];
-                work_memory.write(adress,&d);
-                adress += 1; 
-            }
-            // Fourth: Initiate events on observers here:
-            observers[0].initiate_events(10);
-            observers[1].initiate_events(10);
-            observers[2].initiate_events(10);
-            // Fifth: Start functionality for ROM reading and writing
-            let mut tab_adrr:usize = 0; 
-            if work_memory.cells.len() == MEMORY_MAX_SIZE as usize {
-                if mmu.rom.acess == true {
-                     for _i in [0..initial_data.len()] {
-                        mmu.rom.write_to_rom(tab_adrr as u32, initial_data[tab_adrr]);
-                        tab_adrr += 1; 
-                     } 
-                } else {
-                    mmu.rom.change_acess();
-                    for _j in [0..initial_data.len()] {
-                        mmu.rom.write_to_rom(tab_adrr as u32, initial_data[tab_adrr]);
-                        tab_adrr += 1; 
-                    }
-                    mmu.rom.change_acess();
-                }
-            }
-            
-<<<<<<< HEAD
-            return (work_memory,main_registers, segment_registers, offsets,flag, controlers, observers, )
-        } 
-
-=======
+            let flag = work_env.5;             
             return (work_memory,main_registers, segment_registers, offsets,flag, mmu)
     }
 
     pub fn fisical_adress(&mut self, segment_register: &str ,offset: u32, flag: EFLAG ) -> u32 {
-        let mut base_adrr = 0x10;
+        let base_adrr:usize;
         let mut flag = flag; 
         if segment_register == "cs" {
-            base_adrr = CODE_HEAD;
+            base_adrr = self.code_summary.2 as usize;
         } else if segment_register == "ss" {
-            base_adrr = STACK_HEAD;
+            base_adrr = self.stack_summary.2 as usize;
         } else if segment_register == "ds" {
-            base_adrr = DATA_HEAD;
+            base_adrr = self.data_summary.2 as usize;
         } else {
             return 0; 
         }
@@ -143,15 +67,15 @@ impl MMU {
         let fisc_adrr = base_adrr + (offset as usize);
         
         if segment_register == "cs" {
-            if fisc_adrr > CODE_TAIL {
+            if fisc_adrr > self.code_summary.3 as usize {
                 flag.ovfw = true;
             }
         } else if segment_register == "ss" {
-            if fisc_adrr > STACK_TAIL {
+            if fisc_adrr > self.stack_summary.3 as usize {
                 flag.ovfw = true;
             }
         } else if segment_register == "ds" {
-            if fisc_adrr > DATA_TAIL {
+            if fisc_adrr > self.data_summary.3  as usize{
                 flag.ovfw = true;
             }
         } else {
@@ -159,6 +83,5 @@ impl MMU {
         }
 
         return fisc_adrr as u32;
->>>>>>> 03e0402680ba8cafa7f9e58e6035e3e1d27d987c
     }
 }

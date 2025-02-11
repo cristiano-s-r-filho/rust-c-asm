@@ -2,7 +2,7 @@ use crate::registers::*;
 use crate::chips::mmu::*;  
 use crate::memory::main_memory::*;
 
-pub fn and(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: MMU){
+pub fn xor(work_env:(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: MMU){
 
     let mut work_env: (WorkMemory, MainRegisters, OffsetRegisters, SegmentRegisters, EFLAG) = work_env; 
     let mut mmu = mmu; 
