@@ -38,4 +38,6 @@ pub fn mul(work_env:&mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegist
     let x = work_env.1.eax;
     let mul = x * val;
     work_env.1.write_to_register(String::from("eax"), mul);
+    mmu.foward_to_data_bus(0);
+    mmu.forward_to_adress_bus(0);
 }

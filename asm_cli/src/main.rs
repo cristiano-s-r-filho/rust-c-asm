@@ -106,10 +106,11 @@ fn main() {
         }
         let opcode = input_vec[1]; 
         let operands = &input_vec[2..];
-        let num_operands: & mut[u32] = &mut [0,0];
+        let num_operands: &mut[u32] = &mut [0,0];
         let mut index = 0; 
         for item in operands {
-            let hex_operand = u32::from_str_radix(&item, 16); 
+            let process = item.trim().trim_start_matches("0x").trim_start_matches("0X");
+            let hex_operand = u32::from_str_radix(process, 16); 
             match hex_operand {
                 Ok(values) => num_operands[index] = values,
                 Err(_) => num_operands[index] = 0x0

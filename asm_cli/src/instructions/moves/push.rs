@@ -43,4 +43,6 @@ pub fn push(work_env:&mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegis
     mmu.foward_to_data_bus(x);
     describe_working_states(work_env, mmu, true, false);
     // ESCREVER X EM TOP
+    mmu.foward_to_data_bus(0);
+    mmu.forward_to_adress_bus(0);
 }

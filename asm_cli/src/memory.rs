@@ -57,17 +57,17 @@ pub fn initiate_working_env(init_segments:&mut (u32,u32,u32,u32,u32)) -> (((&'st
     let data_segment_data:(&'static str,bool,u32,u32) = slice_segment_data(&"DATA", data_head , data_tail as u32,&work_memory);
     let extra_segment_data:(&'static str,bool,u32,u32) = slice_segment_data(&"EXTR", extra_head, extra_tail as u32,&work_memory); 
     // BASE ADRESS CALCULATION 
-    let code_base_adrr:u16 = (code_head / 0x10) as u16;
-    let stack_base_adrr:u16 = (stack_head/ 0x10) as u16;
-    let dats_base_adrr:u16 = (data_head/ 0x10) as u16;
-    let extra_base_adrr:u16 = (extra_head/ 0x10) as u16;   
+    let code_base_adrr:u32 = code_head as u32;
+    let stack_base_adrr:u32 = stack_head as u32;
+    let dats_base_adrr:u32 = data_head as u32;
+    let extra_base_adrr:u32 = extra_head as u32;   
     // SEGMENT SELECTOR INIT
     segment_selectors.write_to_register(String::from("cs"), code_base_adrr); 
     segment_selectors.write_to_register(String::from("ss"), stack_base_adrr); 
     segment_selectors.write_to_register(String::from("ds"), dats_base_adrr); 
     segment_selectors.write_to_register(String::from("es"), extra_base_adrr);  
     offsets.write_to_register(String::from("eip"), segment_selectors.cs as u32);
-    offsets.write_to_register(String::from("esi"), stack_tail as u32);
+    offsets.write_to_register(String::from("esp"), stack_tail as u32);
     main_registers.quick_start((10,11,14,15));
     // WARNING!! THIS FEATURE IS NOT ACTUALLY IMPLEMENTED, THIS IS A OBJECTIVE THOUGH!
     flag.over_flow_test();

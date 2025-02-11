@@ -43,5 +43,8 @@ pub fn and(work_env:&mut(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegiste
 
     mmu.forward_to_adress_bus(addr as usize);
     mmu.foward_to_data_bus(work_env.1.eax);
+    // Clean buses.
+    mmu.foward_to_data_bus(0);
+    mmu.forward_to_adress_bus(0);
     
 }

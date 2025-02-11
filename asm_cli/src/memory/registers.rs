@@ -56,12 +56,12 @@ impl MainRegisters {
 }
 // Segment Selector Register
 pub struct SegmentRegisters {
-    pub cs: u16,
-    pub ss: u16,
-    pub ds: u16,
-    pub es: u16,
-    pub fs: u16,
-    pub gs: u16,
+    pub cs: u32,
+    pub ss: u32,
+    pub ds: u32,
+    pub es: u32,
+    pub fs: u32,
+    pub gs: u32,
 }
 impl SegmentRegisters {
     pub fn new() -> Self {
@@ -74,7 +74,7 @@ impl SegmentRegisters {
             gs:0,
         }
     }
-    pub fn write_to_register(&mut self, register: String, data: u16) {
+    pub fn write_to_register(&mut self, register: String, data: u32) {
         if register == "cs" {
             self.cs = data;
         } else if register == "ss" {
@@ -90,7 +90,7 @@ impl SegmentRegisters {
         } 
             
     }
-    pub fn read_from_register(&mut self, register: String) -> u16 {
+    pub fn read_from_register(&mut self, register: String) -> u32 {
         if register == "cs" {
             return self.cs;
         } else if register == "ss" {

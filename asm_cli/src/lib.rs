@@ -13,7 +13,7 @@ use memory::registers::EFLAG;
 use memory::*; 
 pub fn describe_cpu_state(work_env:&mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: MMU) {
     println!("BELLOW HERE GOES A SNAPSHOT THE STATE OF THE CPU:"); 
-    let initial_status_code:(u16,u16,u16,u16) = (work_env.3.cs, work_env.3.ss,work_env.3.ds, work_env.3.es);
+    let initial_status_code:(u32,u32,u32,u32) = (work_env.3.cs, work_env.3.ss,work_env.3.ds, work_env.3.es);
     // Process work memory blocks that have been statically allocaded.
     let init_code_block: (&'static str,bool,u32,u32) = slice_segment_data(&"CODE", mmu.code_summary.2 as usize,mmu.code_summary.3 , &work_env.0);
     let init_stack_block:(&'static str,bool,u32,u32) = slice_segment_data(&"STCK", mmu.stack_summary.2 as usize, mmu.stack_summary.3, &work_env.0);
@@ -39,7 +39,7 @@ pub fn describe_cpu_state(work_env:&mut (WorkMemory,MainRegisters,OffsetRegister
     println!(" NAME: {color_red}{}{color_reset} | STATUS: {color_blue}{}{color_reset} | PRIM: {color_yellow}{:#x}{color_reset} | BLOCK_END: {color_green}{:#x}{color_reset}",init_data_block.0, data_status, init_data_block.2, init_data_block.3);
     println!(" NAME: {color_red}{}{color_reset} | STATUS: {color_blue}{}{color_reset} | PRIM: {color_yellow}{:#x}{color_reset} | BLOCK_END: {color_green}{:#x}{color_reset}",init_extra_block.0, extra_status, init_extra_block.2, init_extra_block.3);
     println!("{color_cyan} PROGRAM-COUNTER-STATE:{color_reset} {color_magenta}{:#x}{color_reset}", work_offsets.eip);
-    println!("{color_cyan} STACK-POINTER-STATE:{color_reset} {color_magenta}{:#x}{color_reset}", work_offsets.esi);
+    println!("{color_cyan} STACK-POINTER-STATE:{color_reset} {color_magenta}{:#x}{color_reset}", work_offsets.esp);
     println!("{}","FLAGS: ".cyan().bold());
     println!("{color_cyan} OVERFLOW? - {color_reset} {color_bright_white}{}{color_reset}", flag_state.ovfw);
     println!("{color_cyan} ZERO? - {color_reset} {color_bright_white}{}{color_reset}", flag_state.zero);

@@ -47,4 +47,6 @@ pub fn dec(work_env:&mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegist
     mmu.foward_to_data_bus(work_env.1.eax);
     describe_working_states(work_env, mmu, true, false);
     // ESCREVER DEC EM ADRR !!
+    mmu.foward_to_data_bus(0);
+    mmu.forward_to_adress_bus(0);
 }

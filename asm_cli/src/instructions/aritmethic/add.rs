@@ -3,7 +3,7 @@ use crate::chips::mmu::*;
 use crate::memory::main_memory::*;
 use crate::describe_working_states; 
 
-pub fn add(work_env: &mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu:&mut MMU, _dst: u32, _src: u32) {
+pub fn add(work_env: &mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu:&mut MMU, dst: u32, src: u32) {
     // ADD DST, SRC; Add SRC to DST
     // Mutable borrows here. 
     let work_env = work_env; 
@@ -22,7 +22,7 @@ pub fn add(work_env: &mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegis
     work_env.2.increment_program_counter();
 
     // LER RAM EM ADRR E POR EM DATA BUS !!
-
+    mmu.foward_to_data_bus(dst);
     let end1 = mmu.get_from_data_bus(); 
     work_env.2.write_to_register(String::from("edi"), end1);
     work_env.2.write_to_register(String::from("esi"), end1);
@@ -46,7 +46,7 @@ pub fn add(work_env: &mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegis
     // LER RAM EM ADRR E POR EM DATA BUS !!
 
     work_env.2.increment_program_counter();
-
+    mmu.foward_to_data_bus(src);
     let end2 = mmu.get_from_data_bus();
     work_env.2.write_to_register(String::from("esi"), end2);
     describe_working_states(work_env, mmu, true, true);
@@ -77,5 +77,8 @@ pub fn add(work_env: &mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegis
     describe_working_states(work_env, mmu, false, false);
     mmu.foward_to_data_bus(work_env.1.eax);
     describe_working_states(work_env, mmu, true, false);
+
+    mmu.foward_to_data_bus(0);
+    mmu.forward_to_adress_bus(0);
     // ESCREVER SUM EM ADRR !!
 }
