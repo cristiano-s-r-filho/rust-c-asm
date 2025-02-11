@@ -2,6 +2,7 @@ use crate::memory::main_memory::WorkMemory;
 use crate::registers::*;
 use crate::chips::mmu::MMU; 
 use crate::instructions::aritmethic::*;
+use crate::instructions::moves::*;
     
 pub struct ALU {
     pub instruction: &'static str,
