@@ -119,13 +119,28 @@ fn main() {
         work_enviroment.2.write_to_register(String::from("eip"), inst_adrr);
         let mut alu = ALU::new();
         alu.execute_instruction(work_enviroment, &mut mmu, opcode, num_operands[0], num_operands[1]);
-        if work_enviroment.4.ovfw == true {
+        println!("Continue? (Y) for yes and (N) for No"); 
+        let mut response = String::new(); 
+        io::stdin().read_line(&mut response).expect("Generate a valid response");
+        let str_response = response.trim();
+        let keep_going = if str_response == "Y" {true} else {false}; 
+        
+        if work_enviroment.4.ovfw == true || keep_going == false {
             break; 
         }
     }
     // END of LOOP. 
     // Global Descriptor Table; 
-    let global_table =  generate_gdt();
+    let mut global_table =  generate_gdt();
+    let mut indexing = 0; 
+    let segment_vec = vec![mmu.code_summary, mmu.stack_summary, mmu.data_summary, mmu.extra_sumary]; 
+    for item in &mut global_table.content[0..4] {
+        item.selector = segment_vec[indexing].0; 
+        item.base = segment_vec[indexing].2; 
+        item.limit = segment_vec[indexing].3; 
+        item.acess_level = AcessLevel::USER;
+        indexing += 1; 
+    }
     println!("{}", "--------------------------- GLOBAL DESCRIPTOR TABLE ----------------------------".cyan().bold());
     for item in &global_table.content[0..20]{
         let selects = item.selector;
