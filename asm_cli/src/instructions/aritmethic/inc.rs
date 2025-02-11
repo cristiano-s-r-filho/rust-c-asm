@@ -7,9 +7,10 @@ pub fn inc(work_env:&mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegist
     // INC DST; Add 1 to DST
     let mmu = mmu; 
     let work_env = work_env;
-    mmu.foward_to_data_bus(0x40 as u32);
+
+    // mmu.foward_to_data_bus(0x40 as u32);
     work_env.2.increment_program_counter();
-    describe_working_states(work_env, mmu, true, true);
+    // describe_working_states(work_env, mmu, true, true);
 
     let mut adrr = work_env.2.read_from_register(String::from("eip"));
     adrr = mmu.fisical_adress("cs", adrr, work_env.4);

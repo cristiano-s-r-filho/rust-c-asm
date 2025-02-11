@@ -10,13 +10,11 @@ pub fn add(work_env: &mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegis
     let mmu = mmu; 
     let mut flag = work_env.4;
     // 1. Increment program counter.
-    mmu.foward_to_data_bus(0x01D8 as u32);
+    // mmu.foward_to_data_bus(0x01D8 as u32);
     work_env.2.increment_program_counter();
-    let mut adrr: u32 = work_env.2.read_from_register(String::from("eip"));
-    // (TRANSFORMAR EM FISICO?)  CS !!
-    describe_working_states(work_env, mmu, true, true);
+    // describe_working_states(work_env, mmu, true, true);
 
-    adrr = work_env.2.read_from_register(String::from("eip"));
+    let mut adrr = work_env.2.read_from_register(String::from("eip"));
     adrr = mmu.fisical_adress("cs", adrr, work_env.4);
     mmu.forward_to_adress_bus(adrr as usize);
     describe_working_states(work_env, mmu, false, false);
@@ -65,7 +63,6 @@ pub fn add(work_env: &mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegis
 
     let sum = (x as i32) + (y as i32);
     work_env.1.write_to_register(String::from("eax"), sum as u32);
-    adrr = work_env.2.read_from_register(String::from("edi"));
     if sum == 0 {
         flag.zero = true;
     }
