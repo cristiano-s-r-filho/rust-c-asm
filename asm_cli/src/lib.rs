@@ -64,7 +64,7 @@ pub fn describe_working_states(work_env:&mut (WorkMemory,MainRegisters,OffsetReg
     let es = work_env.3.es; 
     let flag = if work_env.4.ovfw == true {"YES"} else {"NO"}; 
     //Conditional Prints. 
-    println!("{color_cyan} <-----------------------> {color_reset}");
+    println!("{color_cyan}>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> {color_reset}");
     if data_or_adress == true && get_or_send == true {
         println!("{color_cyan} -- GOT {color_white}{}{color_reset} FROM DATA BUS -- {color_reset}", data_bus); 
     } else if data_or_adress == false && get_or_send == true {
