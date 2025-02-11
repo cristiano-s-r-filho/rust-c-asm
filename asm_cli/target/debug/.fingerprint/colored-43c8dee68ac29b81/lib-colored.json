@@ -1,5 +1,1 @@
-<<<<<<< HEAD
-{"rustc":524190467255570058,"features":"[]","declared_features":"[\"no-color\"]","target":8990721301533177414,"profile":10243973527296709326,"path":6601241478555362901,"deps":[[10080649455407339182,"windows_sys",false,14298931239107437251]],"local":[{"CheckDepInfo":{"dep_info":"debug\\.fingerprint\\colored-43c8dee68ac29b81\\dep-lib-colored","checksum":false}}],"rustflags":[],"metadata":1356078279564610439,"config":2202906307356721367,"compile_kind":0}
-=======
 {"rustc":524190467255570058,"features":"[]","declared_features":"[\"no-color\"]","target":8990721301533177414,"profile":10243973527296709326,"path":13814514933575176212,"deps":[[10080649455407339182,"windows_sys",false,16472024308207043678]],"local":[{"CheckDepInfo":{"dep_info":"debug\\.fingerprint\\colored-43c8dee68ac29b81\\dep-lib-colored","checksum":false}}],"rustflags":[],"metadata":1356078279564610439,"config":2202906307356721367,"compile_kind":0}
->>>>>>> 03e0402680ba8cafa7f9e58e6035e3e1d27d987c
