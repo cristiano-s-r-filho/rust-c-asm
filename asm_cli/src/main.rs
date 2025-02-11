@@ -131,6 +131,7 @@ fn main() {
         }
     }
     // END of LOOP. 
+    describe_cpu_state(work_enviroment, mmu);
     // Global Descriptor Table; 
     let mut global_table =  generate_gdt();
     let mut indexing = 0; 
