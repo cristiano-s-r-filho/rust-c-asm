@@ -15,7 +15,7 @@ impl MainRegisters {
             edx: 0,
         }
     }
-    pub fn write_to_register(&mut self, register:String, data:u32) -> &str {
+    pub fn write_to_register(&mut self, register:&str, data:u32) -> &str {
         pub const ERR_MESSAGE: &str = "Stupid! Use a real register";
         pub const OK_MESSAGE: &str = "Everything OK! Data on the register";
         if register == "eax" {
@@ -34,7 +34,7 @@ impl MainRegisters {
             return ERR_MESSAGE; 
         }
     }
-    pub fn read_from_register(&mut self, register:String) -> u32 {
+    pub fn read_from_register(&mut self, register:&str) -> u32 {
         if register == "eax" {
             return  self.eax;
         } else if register == "ebx" {
@@ -48,10 +48,10 @@ impl MainRegisters {
         }
     }
     pub fn quick_start(&mut self, values_tuple: (u32,u32,u32,u32)){
-        self.write_to_register(String::from("eax"), values_tuple.0);
-        self.write_to_register(String::from("ebx"), values_tuple.1);
-        self.write_to_register(String::from("ecx"), values_tuple.2);
-        self.write_to_register(String::from("edx"), values_tuple.3);
+        self.write_to_register("eax", values_tuple.0);
+        self.write_to_register("ebx", values_tuple.1);
+        self.write_to_register("ecx", values_tuple.2);
+        self.write_to_register("edx", values_tuple.3);
     }
 }
 // Segment Selector Register
@@ -74,7 +74,7 @@ impl SegmentRegisters {
             gs:0,
         }
     }
-    pub fn write_to_register(&mut self, register: String, data: u32) {
+    pub fn write_to_register(&mut self, register: &str, data: u32) {
         if register == "cs" {
             self.cs = data;
         } else if register == "ss" {
@@ -90,7 +90,7 @@ impl SegmentRegisters {
         } 
             
     }
-    pub fn read_from_register(&mut self, register: String) -> u32 {
+    pub fn read_from_register(&mut self, register: &str) -> u32 {
         if register == "cs" {
             return self.cs;
         } else if register == "ss" {
@@ -125,7 +125,7 @@ impl OffsetRegisters {
             esi:0,
         }
     }
-    pub fn write_to_register(&mut self, register: String, data:u32) {
+    pub fn write_to_register(&mut self, register: &str, data:u32) {
         if register == "eip" {
             self.eip = data;
         } else if register == "esp" {
@@ -138,7 +138,7 @@ impl OffsetRegisters {
             self.ebp = data;
         }
     }
-    pub fn read_from_register(&mut self, register: String) -> u32 {
+    pub fn read_from_register(&mut self, register: &str) -> u32 {
         if register == "eip" {
             return self.eip
         } else if register == "esp" {
@@ -177,5 +177,35 @@ impl EFLAG {
             return 0; 
         }; 
 
+    }
+    pub fn set_true(&mut self, value: &str){
+        match value {
+            "ovfw" => {
+                self.ovfw = true;
+            }, 
+            "zero" => {
+                self.zero = true;
+            }, 
+            "negv" => {
+                self.negv = true;
+            },
+            _ => {}
+        }
+    }
+
+    pub fn set_false(&mut self, value: &str){
+        match value {
+            "ovfw" => {
+                self.ovfw = false;
+            }, 
+            "zero" => {
+                self.zero = false; 
+            },
+            "negv" => {
+                self.negv = false; 
+            }, 
+            _ => {
+            }
+        }
     }
 }

@@ -1,28 +1,29 @@
 pub mod memory; 
 pub mod instructions; 
 pub mod chips; 
-use chips::mmu::MMU;
+// use chips::mmu::MMU;
 use colored::Colorize;
 use inline_colorization::*;
 // Memory description at initialization: 
-use memory::main_memory::WorkMemory;
+// use memory::main_memory::WorkMemory;
 use memory::registers::MainRegisters;
 use memory::registers::OffsetRegisters;
 use memory::registers::SegmentRegisters;
 use memory::registers::EFLAG;
-use memory::*; 
-pub fn describe_cpu_state(work_env:&mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: MMU) {
+
+use crate::chips::crom::CPU; 
+pub fn describe_cpu_state(cpu: &CPU) {
     println!("BELLOW HERE GOES A SNAPSHOT THE STATE OF THE CPU:"); 
-    let initial_status_code:(u32,u32,u32,u32) = (work_env.3.cs, work_env.3.ss,work_env.3.ds, work_env.3.es);
+    let initial_status_code:(u32,u32,u32,u32) = (cpu.segment_reg.cs, cpu.segment_reg.ss,cpu.segment_reg.ds, cpu.segment_reg.es);
     // Process work memory blocks that have been statically allocaded.
-    let init_code_block: (&'static str,bool,u32,u32) = slice_segment_data(&"CODE", mmu.code_summary.2 as usize,mmu.code_summary.3 , &work_env.0);
-    let init_stack_block:(&'static str,bool,u32,u32) = slice_segment_data(&"STCK", mmu.stack_summary.2 as usize, mmu.stack_summary.3, &work_env.0);
-    let init_data_block: (&'static str,bool,u32,u32) = slice_segment_data(&"DATA", mmu.data_summary.2 as usize, mmu.data_summary.3,&work_env.0);
-    let init_extra_block: (&'static str,bool,u32,u32) = slice_segment_data(&"EXTR", mmu.extra_sumary.2 as usize, mmu.extra_sumary.3,&work_env.0); 
+    let init_code_block: (&'static str,bool,u32,u32) = ("CODE", false, cpu.segment_reg.cs, 0xFFFF);
+    let init_stack_block:(&'static str,bool,u32,u32) = ("STCK", false, cpu.segment_reg.cs, 0xFFFF);
+    let init_data_block: (&'static str,bool,u32,u32) = ("DATA", false, cpu.segment_reg.cs, 0xFFFF);
+    let init_extra_block: (&'static str,bool,u32,u32) = ("EXTR", false, cpu.segment_reg.cs, 0xFFFF);
     // GENERAL CONFIGS ON INITIALIZATION;
-    let workbench: &MainRegisters = &work_env.1; 
-    let work_offsets: &OffsetRegisters = &work_env.2; 
-    let flag_state: EFLAG = work_env.4; 
+    let workbench: &MainRegisters = &cpu.main_reg; 
+    let work_offsets: &OffsetRegisters = &cpu.offsets; 
+    let flag_state: EFLAG = cpu.flag; 
     println!("{}","WHAT GOES BELLOW IS THE STATE OF THE MAIN REGISTERS:".cyan().bold());
     println!("{}","MAIN REGISTERS: ".cyan().bold()); 
     println!(" {color_cyan}EAX:{color_reset} {color_red}{}{color_reset}", workbench.eax);
@@ -47,22 +48,26 @@ pub fn describe_cpu_state(work_env:&mut (WorkMemory,MainRegisters,OffsetRegister
     println!("{style_bold}{color_bright_cyan}ANALYSES COMPLETED! CODE -- {color_reset}{style_reset}{color_white}{:#x}:{:#x}:{:#x}:{:#x}{color_reset}", initial_status_code.0, initial_status_code.1, initial_status_code.2, initial_status_code.3);
 }     
 
-pub fn describe_working_states(work_env:&mut (WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu: &mut MMU, data_or_adress: bool, get_or_send: bool) -> bool {
-    let mmu_acess = mmu; 
+pub fn describe_working_states(cpu: &CPU, data_or_adress: bool, get_or_send: bool) -> bool {
+    let mut mmu_acess = cpu.crom.mmu; 
     let data_bus = mmu_acess.get_from_data_bus(); 
-    let adress_bus = mmu_acess.get_from_adress_bus(); 
-    let eax =  work_env.1.eax;
-    let ebx = work_env.1.ebx; 
-    let ecx = work_env.1.ecx; 
-    let edx = work_env.1.edx; 
-    let eip = work_env.2.eip; 
-    let esp = work_env.2.esp;
-    let ebp = work_env.2.ebp;  
-    let cs = work_env.3.cs;
-    let ss = work_env.3.ss; 
-    let ds = work_env.3.ds; 
-    let es = work_env.3.es; 
-    let flag = if work_env.4.ovfw == true {"YES"} else {"NO"}; 
+    let adress_bus = mmu_acess.get_from_adress_bus();
+
+    let eax =  cpu.main_reg.eax;
+    let ebx = cpu.main_reg.ebx; 
+    let ecx = cpu.main_reg.ecx; 
+    let edx = cpu.main_reg.edx;
+
+    let eip = cpu.offsets.eip; 
+    let esp = cpu.offsets.esp;
+    let ebp = cpu.offsets.ebp; 
+
+    let cs = cpu.segment_reg.cs;
+    let ss = cpu.segment_reg.ss; 
+    let ds = cpu.segment_reg.ds; 
+    let es = cpu.segment_reg.es; 
+    
+    let flag = cpu.flag.ovfw; 
     //Conditional Prints. 
     println!("{color_cyan}>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> {color_reset}");
     if data_or_adress == true && get_or_send == true {
@@ -77,13 +82,13 @@ pub fn describe_working_states(work_env:&mut (WorkMemory,MainRegisters,OffsetReg
     println!("{color_cyan}EAX: {color_bright_red}{}{color_reset} | EBX: {color_bright_blue}{}{color_reset} | ECX: {color_bright_yellow}{}{color_reset} | EDX: {color_bright_green}{}{color_reset}  {color_reset}", eax,ebx,ecx,edx); 
     println!("{color_cyan}CS: {color_bright_red}{:#x}{color_reset} | SS: {color_bright_blue}{:#x}{color_reset} | DS: {color_bright_yellow}{:#x}{color_reset} | ES: {color_bright_green}{:#x}{color_reset}  {color_reset}", cs,ss,ds,es);
     println!("{color_cyan}PROGRAM-COUNTER: {color_magenta}{:#x}{color_reset}| STACK-POINTER: {color_white}{:#x}{color_reset} | BASE-POINTER:{color_white}{:#x}{color_reset}{color_reset}", eip, esp, ebp); 
-    if work_env.4.ovfw == false {
-        println!("{color_cyan}GPF?:{color_bright_magenta}{}{color_reset}", flag);
+    if flag == false {
+        println!("{color_cyan}GPF?:{color_bright_magenta} NO{color_reset}");
         println!("{color_cyan}--PROCEED AS USUAL--{color_reset}"); 
         let gpf = false; 
         return gpf; 
     } else {
-        println!("{color_cyan}GPF?:{color_bright_magenta}{}{color_reset}", flag);
+        println!("{color_cyan}GPF?:{color_bright_magenta} YES{color_reset}");
         println!("{color_red}-- THERE HAS BEEN A GPF!!! TERMINATING PROCESS IMEDIATELY");
         let gpf = true; 
         return gpf;  

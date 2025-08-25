@@ -1,1 +1,0 @@
-(((&'static str, bool, u32, u32), (&'static str, bool, u32, u32), (&'static str, bool, u32, u32), (&'static str, bool, u32, u32)), WorkMemory, MainRegisters, OffsetRegisters, EFLAG)

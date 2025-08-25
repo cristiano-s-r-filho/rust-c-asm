@@ -1,38 +1,35 @@
-use crate::registers::*;
-use crate::chips::mmu::*;  
-use crate::memory::main_memory::*;
+use crate::chips::crom::CPU;
 
-pub fn not(work_env:&mut(WorkMemory,MainRegisters,OffsetRegisters,SegmentRegisters,EFLAG), mmu:&mut MMU){
+pub fn not(cpu: &mut CPU, src: u32){
 
-    let work_env:&mut (WorkMemory, MainRegisters, OffsetRegisters, SegmentRegisters, EFLAG) = work_env; 
-    let mmu = mmu; 
+    let mut mmu = cpu.crom.mmu; 
 
-    work_env.2.increment_program_counter(); // go to instruction address
+    cpu.offsets.increment_program_counter(); // go to instruction address
     
-    work_env.2.increment_program_counter(); // 1° arg address
-    
-    let mut addr:u32 = work_env.2.read_from_register(String::from("eip"));    
+    cpu.offsets.increment_program_counter();
+
+    let mut addr:u32 = cpu.offsets.read_from_register("eip");    
     // (TRANSFORMAR EM FISICO?)  CS !!
     mmu.forward_to_adress_bus(addr as usize);
 
 
     let end1: u32 = mmu.get_from_adress_bus();
-    work_env.2.write_to_register(String::from("edi"),  end1);
-    work_env.2.write_to_register(String::from("esi"),  end1);
+    cpu.offsets.write_to_register("edi",  end1);
+    cpu.offsets.write_to_register("esi",  end1);
 
-    let mut val: u32 = mmu.get_from_data_bus();
-    work_env.1.write_to_register(String::from("eax"), val);
+    let mut val: u32 = src;
+    cpu.main_reg.write_to_register("eax", val);
 
     val = !val;
 
-    work_env.1.write_to_register(String::from("eax"), val);
+    cpu.main_reg.write_to_register("eax", val);
 
-    addr = work_env.2.read_from_register(String::from("edi"));
+    addr = cpu.offsets.read_from_register("edi");
     // (TRANSFORMAR EM FÍSICO) DS
 
 
     mmu.forward_to_adress_bus(addr as usize);
-    mmu.foward_to_data_bus(work_env.1.eax);
+    mmu.foward_to_data_bus(cpu.main_reg.eax);
     // clean buses
     mmu.foward_to_data_bus(0);
     mmu.forward_to_adress_bus(0);
