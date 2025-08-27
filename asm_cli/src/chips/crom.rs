@@ -73,7 +73,7 @@ impl CPU {
             "mov" => mov::mov(self, operand1, operand2),
             "pop" => pop::pop(self),
             "push" => push::push(self, operand1),
-            "xchg" => xchg::xchg(self, operand1, operand2),
+            // "xchg" => xchg::xchg(self, operand1, operand2),
             _ => self.alu.gpf = true 
         }; 
     }

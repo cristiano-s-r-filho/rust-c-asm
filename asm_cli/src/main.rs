@@ -109,6 +109,7 @@ fn main() {
             Ok(value) => inst_adrr = value,
             Err(_) => inst_adrr = 0x0001
         }
+        // Opcode; 
         let opcode = input_vec[1]; 
         let operands = &input_vec[2..];
         let num_operands: &mut[u32] = &mut [0,0];

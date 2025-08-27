@@ -1,45 +1,43 @@
 use crate::chips::crom::CPU;
-use crate::describe_working_states;
+// use crate::describe_working_states;
 
 pub fn push(cpu: &mut CPU, src: u32) {
+    // PUSH SRC; Put SRC on the top of the stack.
+    // 
+    // First, as always, 
     let mut mmu = cpu.crom.mmu; 
+    let offsets = &mut cpu.offsets;
+    let mains = &mut cpu.main_reg;
 
-    cpu.offsets.increment_program_counter();
-    // describe_working_states(work_env, mmu, true, true);
+    offsets.increment_program_counter();
     
-    let mut adrr = cpu.offsets.read_from_register("eip");
+    
+    let mut adrr = offsets.read_from_register("eip");
     adrr = mmu.fisical_adress(cpu.segment_reg.cs, 0xffff, adrr, cpu.flag);
     mmu.forward_to_adress_bus(adrr as usize);
-    describe_working_states(&cpu, false, false);
+    
 
-    cpu.offsets.increment_program_counter();
+    offsets.increment_program_counter();
 
     // LER RAM EM ADRR E POR EM DATA BUS !!
 
     let end1 = mmu.get_from_data_bus(); 
-    cpu.offsets.write_to_register("edi", end1);
-    cpu.offsets.write_to_register("esi", end1);
-    describe_working_states(&cpu, true, true);
-
+    offsets.write_to_register("edi", end1);
+    offsets.write_to_register("esi", end1);
+    
     adrr = mmu.fisical_adress(cpu.segment_reg.ds,0xfff,  end1, cpu.flag);
-    mmu.forward_to_adress_bus(adrr as usize);
-    describe_working_states(&cpu, false, false);
+    mmu.forward_to_adress_bus(adrr as usize);    
 
     //LER RAM EM ADRR POR EM DATA BUS !!
-
+    // Operate.: 
     let x = src;
-    cpu.main_reg.write_to_register("eax", x);
-    describe_working_states(&cpu, true, true);
+    mains.write_to_register("eax", x);
 
-    let mut top = cpu.offsets.read_from_register("esp");
+    let mut top = offsets.read_from_register("esp");
     top = top - 2;
-    cpu.offsets.write_to_register("esp", top);
+    offsets.write_to_register("esp", top);
     top = mmu.fisical_adress(cpu.segment_reg.ss,0xffff, top, cpu.flag);
     mmu.forward_to_adress_bus(top as usize);
-    describe_working_states(&cpu, false, false);
     mmu.foward_to_data_bus(x);
-    describe_working_states(&cpu, true, false);
-    // ESCREVER X EM TOP
-    mmu.foward_to_data_bus(0);
-    mmu.forward_to_adress_bus(0);
+    
 }
