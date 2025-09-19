@@ -1,211 +1,184 @@
-// REGISTERS FOR THE PROTECTED MODE EXECUTION - Implementation 
-// General Registers 
-pub struct MainRegisters {
-    pub eax: u32, 
-    pub ebx: u32,
-    pub ecx: u32,
-    pub edx: u32, 
+// REGISTERS FOR THE REAL MODE EXECUTION - Implementation 
+// General Purpose Registers, Segments, Offsets and a Flags 
+// cpu/registers.rs
+#[derive(Debug, Clone)]
+pub struct Registers {
+    // General purpose registers (32-bit)
+    pub ax: u32,
+    pub bx: u32,
+    pub cx: u32,
+    pub dx: u32,
+    
+    // Pointer registers (32-bit)
+    pub sp: u32,  // Stack pointer
+    pub bp: u32,  // Base pointer
+    
+    // Index registers (32-bit)
+    pub si: u32,  // Source index
+    pub di: u32,  // Destination index
+    
+    // Control registers (32-bit)
+    pub pc: u32,  // Program counter
+    pub flags: u32,  // Flags register
+    
+    // Segment registers (16-bit)
+    pub cs: u16,  // Code segment
+    pub ds: u16,  // Data segment
+    pub ss: u16,  // Stack segment
+    pub es: u16,  // Extra segment
 }
-impl MainRegisters {
-    pub fn new() -> Self {
-        MainRegisters {
-            eax: 0,
-            ebx: 0,
-            ecx: 0,
-            edx: 0,
-        }
-    }
-    pub fn write_to_register(&mut self, register:&str, data:u32) -> &str {
-        pub const ERR_MESSAGE: &str = "Stupid! Use a real register";
-        pub const OK_MESSAGE: &str = "Everything OK! Data on the register";
-        if register == "eax" {
-            self.eax = data;  
-            return OK_MESSAGE; 
-        } else if register == "ebx" {
-            self.ebx = data;
-            return OK_MESSAGE;
-        } else if register == "ecx" {
-            self.ecx = data;
-            return OK_MESSAGE;
-        } else if register == "edx" {
-            self.edx = data;
-            return OK_MESSAGE;
-        } else {
-            return ERR_MESSAGE; 
-        }
-    }
-    pub fn read_from_register(&mut self, register:&str) -> u32 {
-        if register == "eax" {
-            return  self.eax;
-        } else if register == "ebx" {
-            return self.ebx;
-        } else if register == "ecx" {
-            return self.ecx;
-        } else if register == "edx" {
-            return self.edx;
-        } else {
-            return 0; 
-        }
-    }
-    pub fn quick_start(&mut self, values_tuple: (u32,u32,u32,u32)){
-        self.write_to_register("eax", values_tuple.0);
-        self.write_to_register("ebx", values_tuple.1);
-        self.write_to_register("ecx", values_tuple.2);
-        self.write_to_register("edx", values_tuple.3);
-    }
-}
-// Segment Selector Register
-pub struct SegmentRegisters {
-    pub cs: u32,
-    pub ss: u32,
-    pub ds: u32,
-    pub es: u32,
-    pub fs: u32,
-    pub gs: u32,
-}
-impl SegmentRegisters {
-    pub fn new() -> Self {
-        SegmentRegisters {
-            cs:0,
-            ss:0,
-            ds:0,
-            es:0,
-            fs:0,
-            gs:0,
-        }
-    }
-    pub fn write_to_register(&mut self, register: &str, data: u32) {
-        if register == "cs" {
-            self.cs = data;
-        } else if register == "ss" {
-            self.ss = data;
-        } else if register == "ds" {
-            self.ds = data;
-        } else if register == "es" {
-            self.es = data;
-        } else if register == "fs" {
-            self.fs = data;
-        } else if register == "gs" {
-            self.gs = data; 
-        } 
-            
-    }
-    pub fn read_from_register(&mut self, register: &str) -> u32 {
-        if register == "cs" {
-            return self.cs;
-        } else if register == "ss" {
-            return self.ss;
-        } else if register == "ds" {
-            return self.ds;
-        } else if register == "es" {
-            return self.es;
-        } else if register == "fs" {
-            return self.fs;
-        } else if register == "gs" {
-            return self.gs;
-        } else {
-            return 0; 
-        }
-    }
-}
-pub struct OffsetRegisters{
-    pub eip: u32, 
-    pub esp: u32,
-    pub ebp: u32,
-    pub edi: u32,
-    pub esi: u32
-}
-impl OffsetRegisters {
-    pub fn new() -> Self {
-        OffsetRegisters {
-            eip:0,
-            esp:0,
-            ebp:0,
-            edi:0,
-            esi:0,
-        }
-    }
-    pub fn write_to_register(&mut self, register: &str, data:u32) {
-        if register == "eip" {
-            self.eip = data;
-        } else if register == "esp" {
-            self.esp = data; 
-        } else if register == "esi" {
-            self.esi = data; 
-        } else if register == "edi" {
-            self.edi = data; 
-        } else if register == "ebp" {
-            self.ebp = data;
-        }
-    }
-    pub fn read_from_register(&mut self, register: &str) -> u32 {
-        if register == "eip" {
-            return self.eip
-        } else if register == "esp" {
-            return self.esp;
-        } else if register == "ebp" {
-            return self.ebp;
-        } else if register == "edi" {
-            return self.edi;
-        } else if register == "esi" {
-            return self.esi;
-        } else {
-            return 0; 
-        } 
-    } 
-    pub fn increment_program_counter(&mut self){
-        self.eip = &self.eip + 2;
-    }
-    pub fn decrease_stack_pointer(&mut self) {
-        self.esp = &self.esp - 2; 
-    } 
-}    
-#[derive(Clone,Copy)]
-pub struct EFLAG { 
-    pub ovfw:bool,
-    pub zero:bool,
-    pub negv:bool,  
-}
-impl EFLAG {
-    pub fn new() -> Self {
-        EFLAG { ovfw: false, zero: false, negv: false }
-    }
-    pub fn over_flow_test(&mut self) -> u8 {
-        if self.ovfw == true {
-            return 1; 
-        } else {
-            return 0; 
-        }; 
 
-    }
-    pub fn set_true(&mut self, value: &str){
-        match value {
-            "ovfw" => {
-                self.ovfw = true;
-            }, 
-            "zero" => {
-                self.zero = true;
-            }, 
-            "negv" => {
-                self.negv = true;
-            },
-            _ => {}
+impl Registers {
+    pub fn new() -> Self {
+        Self {
+            ax: 0,
+            bx: 0,
+            cx: 0,
+            dx: 0,
+            sp: 0xFFFF,  // Start stack at top of memory
+            bp: 0,
+            si: 0,
+            di: 0,
+            pc: 0,
+            flags: 0,
+            cs: 0,
+            ds: 0,
+            ss: 0,
+            es: 0,
         }
     }
-
-    pub fn set_false(&mut self, value: &str){
-        match value {
-            "ovfw" => {
-                self.ovfw = false;
-            }, 
-            "zero" => {
-                self.zero = false; 
-            },
-            "negv" => {
-                self.negv = false; 
-            }, 
-            _ => {
-            }
+    
+    pub fn reset(&mut self) {
+        *self = Self::new();
+    }
+    
+    pub fn get(&self, reg_name: &str) -> Result<u32, String> {
+        match reg_name.to_lowercase().as_str() {
+            "ax" => Ok(self.ax),
+            "bx" => Ok(self.bx),
+            "cx" => Ok(self.cx),
+            "dx" => Ok(self.dx),
+            "sp" => Ok(self.sp),
+            "bp" => Ok(self.bp),
+            "si" => Ok(self.si),
+            "di" => Ok(self.di),
+            "pc" => Ok(self.pc),
+            "flags" => Ok(self.flags),
+            _ => Err(format!("Unknown register: {}", reg_name)),
         }
+    }
+    
+    pub fn set(&mut self, reg_name: &str, value: u32) -> Result<(), String> {
+        match reg_name.to_lowercase().as_str() {
+            "ax" => { self.ax = value; Ok(()) },
+            "bx" => { self.bx = value; Ok(()) },
+            "cx" => { self.cx = value; Ok(()) },
+            "dx" => { self.dx = value; Ok(()) },
+            "sp" => { self.sp = value; Ok(()) },
+            "bp" => { self.bp = value; Ok(()) },
+            "si" => { self.si = value; Ok(()) },
+            "di" => { self.di = value; Ok(()) },
+            "pc" => { self.pc = value; Ok(()) },
+            "flags" => { self.flags = value; Ok(()) },
+            _ => Err(format!("Unknown register: {}", reg_name)),
+        }
+    }
+    
+    pub fn get_segment(&self, seg_name: &str) -> Result<u16, String> {
+        match seg_name.to_lowercase().as_str() {
+            "cs" => Ok(self.cs),
+            "ds" => Ok(self.ds),
+            "ss" => Ok(self.ss),
+            "es" => Ok(self.es),
+            _ => Err(format!("Unknown segment register: {}", seg_name)),
+        }
+    }
+    
+    pub fn set_segment(&mut self, seg_name: &str, value: u16) -> Result<(), String> {
+        match seg_name.to_lowercase().as_str() {
+            "cs" => { self.cs = value; Ok(()) },
+            "ds" => { self.ds = value; Ok(()) },
+            "ss" => { self.ss = value; Ok(()) },
+            "es" => { self.es = value; Ok(()) },
+            _ => Err(format!("Unknown segment register: {}", seg_name)),
+        }
+    }
+    
+    // Flag manipulation methods
+    pub fn update_flags(&mut self, result: u32, op1: u32, op2: u32, is_subtraction: bool) {
+        // Zero flag: set if result is zero
+        self.set_flag("zero", result == 0);
+        
+        // Sign flag: set if result is negative (MSB set)
+        self.set_flag("sign", (result as i32) < 0);
+        
+        // Carry flag: set if unsigned overflow occurred
+        if is_subtraction {
+            self.set_flag("carry", op1 < op2);
+        } else {
+            self.set_flag("carry", result < op1 || result < op2);
+        }
+        
+        // Overflow flag: set if signed overflow occurred
+        if is_subtraction {
+            let op1_signed = op1 as i32;
+            let op2_signed = op2 as i32;
+            let result_signed = result as i32;
+            self.set_flag("overflow", (op1_signed < 0 && op2_signed > 0 && result_signed > 0) ||
+                                     (op1_signed > 0 && op2_signed < 0 && result_signed < 0));
+        } else {
+            let op1_signed = op1 as i32;
+            let op2_signed = op2 as i32;
+            let result_signed = result as i32;
+            self.set_flag("overflow", (op1_signed > 0 && op2_signed > 0 && result_signed < 0) ||
+                                     (op1_signed < 0 && op2_signed < 0 && result_signed > 0));
+        }
+        
+        // Parity flag: set if number of set bits in lower byte is even
+        let lower_byte = (result & 0xFF) as u8;
+        self.set_flag("parity", lower_byte.count_ones() % 2 == 0);
+        
+        // Auxiliary carry flag: set if carry from bit 3 to bit 4
+        let op1_low = op1 as u8;
+        let op2_low = op2 as u8;
+        let _result_low = result as u8;
+        
+        if is_subtraction {
+            self.set_flag("auxiliary", (op1_low & 0x0F) < (op2_low & 0x0F));
+        } else {
+            self.set_flag("auxiliary", (op1_low & 0x0F) + (op2_low & 0x0F) > 0x0F);
+        }
+    }
+    
+    pub fn set_flag(&mut self, flag_name: &str, value: bool) {
+        let bit_position = match flag_name.to_lowercase().as_str() {
+            "carry" => 0,
+            "parity" => 2,
+            "auxiliary" => 4,
+            "zero" => 6,
+            "sign" => 7,
+            "overflow" => 11,
+            _ => return,
+        };
+        
+        if value {
+            self.flags |= 1 << bit_position;
+        } else {
+            self.flags &= !(1 << bit_position);
+        }
+    }
+    
+    pub fn get_flag(&self, flag_name: &str) -> Result<bool, String> {
+        let bit_position = match flag_name.to_lowercase().as_str() {
+            "carry" => 0,
+            "parity" => 2,
+            "auxiliary" => 4,
+            "zero" => 6,
+            "sign" => 7,
+            "overflow" => 11,
+            _ => return Err(format!("Unknown flag: {}", flag_name)),
+        };
+        
+        Ok((self.flags & (1 << bit_position)) != 0)
     }
 }
