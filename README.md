@@ -1,17 +1,19 @@
 # ARC - 0  | Rust-Based Assembly EMULATOR
 
 ```rust
-                      █████╗   ██████╗  ██████╗   ██████╗ 
-                     ██╔══██╗ ██╔══██╗ ██╔════╝  ██╔═══██╗
-                     ███████║ ██████╔╝ ██║       ██║   ██║
-                     ██╔══██║ ██╔══██╗ ██║       ██║   ██║
-                     ██║  ██║ ██║  ██║ ╚██████╗  ╚██████╔╝
-                     ╚═╝  ╚═╝ ╚═╝  ╚═╝  ╚═════╝   ╚═════╝
+                                                              █████╗   ██████╗  ██████╗   ██████╗ 
+                                                             ██╔══██╗ ██╔══██╗ ██╔════╝  ██╔═══██╗
+                                                             ███████║ ██████╔╝ ██║       ██║   ██║
+                                                             ██╔══██║ ██╔══██╗ ██║       ██║   ██║
+                                                             ██║  ██║ ██║  ██║ ╚██████╗  ╚██████╔╝
+                                                             ╚═╝  ╚═╝ ╚═╝  ╚═╝  ╚═════╝   ╚═════╝
  ```
  
  <div align="center">
-    **A custom x86-inspired assembly architecture emulator with ARC-0 assembly language support**
-</div>
+   
+     **A custom x86-inspired assembly architecture emulator with ARC-0 assembly language support**
+     
+
 
 [![Rust](https://img.shields.io/badge/Rust-1.60%2B-orange?logo=rust)](https://www.rust-lang.org/)
 
@@ -19,8 +21,11 @@
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/cristiano-s-r-filho/rust-c-asm/asm-cli/rust.yml?branch=main)](https://github.com/cristiano-s-r-filho/rust-c-asm/actions)
 </div>
+</div>
 <div align="center">
-**Explore the world of assembly programming with ARC-0!**
+  
+    **Explore the world of assembly programming with ARC-0!**
+
 </div> ```
 
 ## Overview
