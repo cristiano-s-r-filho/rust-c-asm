@@ -1,17 +1,17 @@
 # ARC - 0  | Rust-Based Assembly EMULATOR
-<div align="center">
-```rust
- "
- █████╗   ██████╗  ██████╗   ██████╗ 
-██╔══██╗ ██╔══██╗ ██╔════╝  ██╔═══██╗
-███████║ ██████╔╝ ██║       ██║   ██║
-██╔══██║ ██╔══██╗ ██║       ██║   ██║
-██║  ██║ ██║  ██║ ╚██████╗  ╚██████╔╝
-╚═╝  ╚═╝ ╚═╝  ╚═╝  ╚═════╝   ╚═════╝
-"
- ```
 
+```rust
+                      █████╗   ██████╗  ██████╗   ██████╗ 
+                     ██╔══██╗ ██╔══██╗ ██╔════╝  ██╔═══██╗
+                     ███████║ ██████╔╝ ██║       ██║   ██║
+                     ██╔══██║ ██╔══██╗ ██║       ██║   ██║
+                     ██║  ██║ ██║  ██║ ╚██████╗  ╚██████╔╝
+                     ╚═╝  ╚═╝ ╚═╝  ╚═╝  ╚═════╝   ╚═════╝
+ ```
+ 
+ <div align="center">
     **A custom x86-inspired assembly architecture emulator with ARC-0 assembly language support**
+</div>
 
 [![Rust](https://img.shields.io/badge/Rust-1.60%2B-orange?logo=rust)](https://www.rust-lang.org/)
 
