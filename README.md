@@ -1,17 +1,20 @@
 # ARC - 0  | Rust-Based Assembly EMULATOR
 <div align="center">
-```ansi
+```
 █████╗   ██████╗    ██████╗  ██████╗ 
 ██╔══██╗ ██╔══██╗ ██╔════╝  ██╔═══██╗
 ███████║ ██████╔╝ ██║       ██║   ██║
 ██╔══██║ ██╔══██╗ ██║       ██║   ██║
 ██║  ██║ ██║  ██║ ╚██████╗  ╚██████╔╝
 ╚═╝  ╚═╝ ╚═╝  ╚═╝  ╚═════╝   ╚═════╝
+´´´
 
-**A custom x86-inspired assembly architecture emulator with ARC-0 assembly language support**
+    **A custom x86-inspired assembly architecture emulator with ARC-0 assembly language support**
 
 [![Rust](https://img.shields.io/badge/Rust-1.60%2B-orange?logo=rust)](https://www.rust-lang.org/)
+
 [![License](https://img.shields.io/badge/License-MIT%2FApache--2.0-blue)](#license)
+
 [![Build Status](https://img.shields.io/github/actions/workflow/status/yourusername/arc0-emulator/rust.yml?branch=main)](https://github.com/yourusername/arc0-emulator/actions)
 
 </div>``` 
