@@ -1,3 +1,4 @@
+use crate::memory::registers::Reg;
 use std::collections::VecDeque;
 use std::io;
 use std::time::Duration;
@@ -14,7 +15,7 @@ use ratatui::Terminal;
 
 use crate::chips::cpu::CPU;
 use crate::memory::main_memory::WorkMemory;
-use crate::utils::command_processor::{Command, execute_command, parse_command};
+use crate::utils::command_processor::{self, execute_command, parse_command, Command};
 use crate::utils::widgets::{
     render_cpu_panel, render_memory_panel, render_menu, render_input_panel, 
     render_status_bar, render_start_menu, render_settings_menu, 
@@ -43,7 +44,8 @@ pub enum EditorMode {
 pub struct ProgramInfo {
     pub name: String,
     pub content: String,
-    pub command_count: usize,
+    pub commands: VecDeque<Command>,
+    pub machine_code: Vec<u32>,
 }
 
 #[derive(Debug)]
@@ -119,16 +121,30 @@ pub fn run() -> io::Result<()> {
     };
     
     // Add some sample programs
+    let commands1: Vec<Command> = vec![
+        parse_command("MOVI AX, 10").unwrap(),
+        parse_command("MOVI BX, 20").unwrap(),
+        parse_command("ADDW AX, BX").unwrap(),
+    ];
+    let machine_code1 = command_processor::assemble_program(&commands1).unwrap();
     app_state.saved_programs.push(ProgramInfo {
         name: "Example 1".to_string(),
         content: "MOVI AX, 10\nMOVI BX, 20\nADDW AX, BX".to_string(),
-        command_count: 3,
+        commands: commands1.into(),
+        machine_code: machine_code1,
     });
     
+    let commands2: Vec<Command> = vec![
+        parse_command("MOVI CX, 5").unwrap(),
+        parse_command("MOVI DX, 3").unwrap(),
+        parse_command("SUBW CX, DX").unwrap(),
+    ];
+    let machine_code2 = command_processor::assemble_program(&commands2).unwrap();
     app_state.saved_programs.push(ProgramInfo {
         name: "Example 2".to_string(),
         content: "MOVI CX, 5\nMOVI DX, 3\nSUBW CX, DX".to_string(),
-        command_count: 3,
+        commands: commands2.into(),
+        machine_code: machine_code2,
     });
     
     // Main loop
@@ -142,29 +158,32 @@ pub fn run() -> io::Result<()> {
     result
 }
 
+
+
 fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app_state: &mut AppState) -> io::Result<()> {
     while !app_state.should_quit {
         terminal.draw(|f| ui(f, app_state))?;
         handle_events(app_state)?;
         
-        // Process commands if in running mode
+        // Process instructions if in running mode
         if app_state.mode == AppMode::Running {
-            if let Some(command) = app_state.command_queue.pop_front() {
-                if let Err(e) = execute_command(command, &mut app_state.cpu, &mut app_state.work_memory) {
+            match app_state.cpu.step(&mut app_state.work_memory) {
+                Ok(_) => {
+                    // Add delay between instructions
+                    std::thread::sleep(Duration::from_millis(100));
+                    
+                    // Stop if we've reached the end of memory or a HLT instruction
+                    if app_state.cpu.registers.pc >= app_state.work_memory.size as u32 {
+                        app_state.mode = AppMode::Paused;
+                        app_state.last_message = Some("Program execution completed".to_string());
+                        app_state.message_is_error = false;
+                    }
+                },
+                Err(e) => {
                     app_state.last_message = Some(e);
                     app_state.message_is_error = true;
                     app_state.mode = AppMode::Paused;
                 }
-                
-                // Add delay between commands
-                std::thread::sleep(Duration::from_millis(100));
-                
-                // Stop if queue is empty
-                if app_state.command_queue.is_empty() {
-                    app_state.mode = AppMode::Paused;
-                }
-            } else {
-                app_state.mode = AppMode::Paused;
             }
         }
         
@@ -289,9 +308,9 @@ fn handle_events(app_state: &mut AppState) -> io::Result<()> {
                                 // Start Emulator
                                 app_state.mode = AppMode::Paused;
                                 
-                                // If we have a loaded program, add its commands to the queue
-                                if app_state.loaded_program.is_some() && !app_state.command_queue.is_empty() {
-                                    app_state.last_message = Some(format!("Running loaded program: {}", 
+                                if app_state.loaded_program.is_some() {
+                                    app_state.cpu.registers.set(&Reg::PC, 0).unwrap();
+                                    app_state.last_message = Some(format!("Program '{}' loaded. Press 'Run All' to start.", 
                                         app_state.loaded_program.as_ref().unwrap()));
                                     app_state.message_is_error = false;
                                 } else {
@@ -577,7 +596,15 @@ fn handle_events(app_state: &mut AppState) -> io::Result<()> {
                     // Work menu selection
                     KeyCode::Enter if app_state.mode != AppMode::CommandMode && !app_state.settings_menu_active && !app_state.editor_screen => {
                         match app_state.selected_menu_item {
-                            0 => app_state.mode = AppMode::Running,
+                            0 => {
+                                if app_state.loaded_program.is_some() {
+                                    app_state.cpu.registers.set(&Reg::PC, 0).unwrap();
+                                    app_state.mode = AppMode::Running;
+                                } else {
+                                    app_state.last_message = Some("No program loaded to run.".to_string());
+                                    app_state.message_is_error = true;
+                                }
+                            },
                             1 => {
                                 if let Some(command) = app_state.command_queue.pop_front() {
                                     if let Err(e) = execute_command(command, &mut app_state.cpu, &mut app_state.work_memory) {
@@ -683,7 +710,6 @@ fn save_program_with_name(app_state: &mut AppState) {
     // Parse the program text into commands
     let lines: Vec<&str> = app_state.editor_text.lines().collect();
     let mut commands = VecDeque::new();
-    let mut command_count = 0;
     
     for line in lines {
         let trimmed_line = line.trim();
@@ -692,9 +718,18 @@ fn save_program_with_name(app_state: &mut AppState) {
         }
         if let Ok(command) = parse_command(trimmed_line) {
             commands.push_back(command);
-            command_count += 1;
         }
     }
+
+    let commands_vec: Vec<Command> = commands.clone().into();
+    let machine_code = match command_processor::assemble_program(&commands_vec) {
+        Ok(code) => code,
+        Err(e) => {
+            app_state.last_message = Some(e);
+            app_state.message_is_error = true;
+            return;
+        }
+    };
     
     // Check if we already have a program with this name (and it's not the one we're editing)
     if let Some(existing_index) = app_state.saved_programs.iter().position(|p| p.name == program_name) {
@@ -710,22 +745,22 @@ fn save_program_with_name(app_state: &mut AppState) {
         app_state.saved_programs[index] = ProgramInfo {
             name: program_name.clone(),
             content: app_state.editor_text.clone(),
-            command_count,
+            commands,
+            machine_code,
         };
     } else {
         // Add new program
         app_state.saved_programs.push(ProgramInfo {
             name: program_name.clone(),
             content: app_state.editor_text.clone(),
-            command_count,
+            commands,
+            machine_code,
         });
     }
     
-    // Load the program into the emulator
-    app_state.command_queue = commands;
     app_state.loaded_program = Some(program_name.clone());
     app_state.loaded_program_size = app_state.editor_text.len();
-    app_state.last_message = Some(format!("Program '{}' saved with {} commands", program_name, command_count));
+    app_state.last_message = Some(format!("Program '{}' saved and assembled successfully", program_name));
     app_state.message_is_error = false;
     app_state.editing_program_index = None;
 }
@@ -739,24 +774,13 @@ fn load_selected_program(app_state: &mut AppState) {
     
     let selected_program = &app_state.saved_programs[app_state.program_list_selected];
     
-    // Parse the program text into commands
-    let lines: Vec<&str> = selected_program.content.lines().collect();
-    app_state.command_queue.clear();
-    
-    for line in lines {
-        let trimmed_line = line.trim();
-        if trimmed_line.is_empty() {
-            continue;
-        }
-        if let Ok(command) = parse_command(trimmed_line) {
-            app_state.command_queue.push_back(command);
-        }
-    }
+    app_state.command_queue = selected_program.commands.clone();
+    app_state.work_memory.load_program(0, &selected_program.machine_code).unwrap();
     
     app_state.loaded_program = Some(selected_program.name.clone());
     app_state.loaded_program_size = selected_program.content.len();
     app_state.editor_screen = false;
-    app_state.last_message = Some(format!("Program '{}' loaded with {} commands", selected_program.name, selected_program.command_count));
+    app_state.last_message = Some(format!("Program '{}' loaded with {} commands", selected_program.name, selected_program.commands.len()));
     app_state.message_is_error = false;
 }
 

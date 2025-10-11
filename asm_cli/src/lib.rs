@@ -29,7 +29,6 @@ impl Emulator {
     }
     
     pub fn reset(&mut self) {
-        self.cpu.reset();
         self.memory = WorkMemory::new(self.memory.size);
     }
     

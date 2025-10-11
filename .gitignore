@@ -1,1 +1,3 @@
-asm-cli/target/*,
+/docs
+.gemini
+asm_cli/target

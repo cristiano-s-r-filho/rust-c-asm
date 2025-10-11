@@ -13,55 +13,42 @@ pub fn render_cpu_panel(f: &mut Frame, area: Rect, cpu: &CPU) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(8),  // General Purpose (increased from 6)
-            Constraint::Length(7),  // Segment (increased from 5)
-            Constraint::Length(7),  // Stack/Pointer (increased from 5)
-            Constraint::Length(6),  // Control (increased from 4)
+            Constraint::Min(8),  // General Purpose
+            Constraint::Length(7),  // Stack/Pointer
+            Constraint::Length(6),  // Control
         ])
         .split(area);
 
-    // General Purpose Registers - now with red color
+    // General Purpose Registers - now displaying as f32
     let general_purpose = format!(
-        "AX: {:#010x}    BX: {:#010x}\n\
-         CX: {:#010x}    DX: {:#010x}",
-        cpu.registers.ax, cpu.registers.bx, cpu.registers.cx, cpu.registers.dx
+        "AX: {:<10.4}    BX: {:<10.4}\n         CX: {:<10.4}    DX: {:<10.4}",
+        f32::from_bits(cpu.registers.ax), f32::from_bits(cpu.registers.bx),
+        f32::from_bits(cpu.registers.cx), f32::from_bits(cpu.registers.dx)
     );
     let general_paragraph = Paragraph::new(general_purpose)
-        .block(Block::default().borders(Borders::ALL).title("General Purpose"))
-        .style(Style::default().fg(Color::Red));  // Changed to red
+        .block(Block::default().borders(Borders::ALL).title("General Purpose (f32)"))
+        .style(Style::default().fg(Color::Red));
     f.render_widget(general_paragraph, chunks[0]);
 
-    // Segment Registers - now with red color
-    let segment = format!(
-        "CS: {:#06x}    DS: {:#06x}\n\
-         SS: {:#06x}    ES: {:#06x}",
-        cpu.registers.cs, cpu.registers.ds, cpu.registers.ss, cpu.registers.es
-    );
-    let segment_paragraph = Paragraph::new(segment)
-        .block(Block::default().borders(Borders::ALL).title("Segment"))
-        .style(Style::default().fg(Color::Blue));  // Changed to red
-    f.render_widget(segment_paragraph, chunks[1]);
-
-    // Stack/Pointer Registers - now with red color
+    // Stack/Pointer Registers
     let stack = format!(
-        "SP: {:#010x}    BP: {:#010x}\n\
-         SI: {:#010x}    DI: {:#010x}",
+        "SP: {:#010x}    BP: {:#010x}\n         SI: {:#010x}    DI: {:#010x}",
         cpu.registers.sp, cpu.registers.bp, cpu.registers.si, cpu.registers.di
     );
     let stack_paragraph = Paragraph::new(stack)
-        .block(Block::default().borders(Borders::ALL).title("Stack/Pointer"))
-        .style(Style::default().fg(Color::Yellow));  // Changed to red
-    f.render_widget(stack_paragraph, chunks[2]);
+        .block(Block::default().borders(Borders::ALL).title("Stack/Pointer (u32)"))
+        .style(Style::default().fg(Color::Yellow));
+    f.render_widget(stack_paragraph, chunks[1]);
 
-    // Control Registers - now with red color
+    // Control Registers
     let control = format!(
         "PC: {:#010x}    FLAGS: {:#010x}",
         cpu.registers.pc, cpu.registers.flags
     );
     let control_paragraph = Paragraph::new(control)
-        .block(Block::default().borders(Borders::ALL).title("Control"))
-        .style(Style::default().fg(Color::Green));  // Changed to red
-    f.render_widget(control_paragraph, chunks[3]);
+        .block(Block::default().borders(Borders::ALL).title("Control (u32)"))
+        .style(Style::default().fg(Color::Green));
+    f.render_widget(control_paragraph, chunks[2]);
 }
 
 pub fn render_memory_panel(f: &mut Frame, area: Rect, memory: &WorkMemory, _app_state: &AppState) {
@@ -74,10 +61,10 @@ pub fn render_memory_panel(f: &mut Frame, area: Rect, memory: &WorkMemory, _app_
     for i in 0..16 {
         let addr = start_addr + i * 4;
         if addr as usize + 3 < memory.size {
-            if let Ok(value) = memory.read(addr) {
+            if let Ok(value) = memory.read_u32(addr) {
                 content.push_str(&format!("{:#010x}: {:#010x}", addr, value));
                 if addr == sp {
-                    content.push_str("  ← SP");
+                    content.push_str("  <- SP");
                 }
                 content.push('\n');
             }
@@ -125,7 +112,7 @@ pub fn render_menu(f: &mut Frame, area: Rect, app_state: &AppState) {
     let menu = Paragraph::new(Line::from(line_content))
         .block(Block::default()
             .borders(Borders::ALL)
-            .title("Work Menu (←/→/Enter)"))
+            .title("Work Menu (<-/->/Enter)"))
         .alignment(Alignment::Center);
     
     f.render_widget(menu, area);
@@ -185,7 +172,7 @@ pub fn render_start_menu(f: &mut Frame, area: Rect, app_state: &AppState) {
         .split(area);
     
     // Top section with ANSI art
-    let art = r#"
+    let art = r#" 
      █████╗ ██████╗  ██████╗     ██████╗ 
     ██╔══██╗██╔══██╗██╔════╝    ██╔═══██╗
     ███████║██████╔╝██║         ██║   ██║
@@ -210,15 +197,16 @@ pub fn render_start_menu(f: &mut Frame, area: Rect, app_state: &AppState) {
     let repo_info = "GitHub: https://github.com/yourusername/arc0-emulator";
     
     let program_info = if app_state.loaded_program.is_some() {
+        let program = app_state.saved_programs.iter().find(|p| p.name == *app_state.loaded_program.as_ref().unwrap()).unwrap();
         format!("Loaded: {} ({} commands, {:.1} KiB)", 
-                app_state.loaded_program.as_ref().unwrap(),
-                app_state.command_queue.len(),
-                app_state.loaded_program_size as f32 / 1024.0)
+                program.name,
+                program.commands.len(),
+                program.content.len() as f32 / 1024.0)
     } else {
         "No program loaded".to_string()
     };
     
-    let middle_art = r#"
+    let middle_art = r#" 
     ┌──────────────────────────────────────┐
     │      ARC-0 Custom Assembly           │
     └──────────────────────────────────────┘
@@ -375,7 +363,7 @@ pub fn render_program_editor(f: &mut Frame, area: Rect, app_state: &AppState) {
         let menu = Paragraph::new(Line::from(line_content))
             .block(Block::default()
                 .borders(Borders::ALL)
-                .title("Editor Menu (←/→/Enter)"))
+                .title("Editor Menu (<-/->/Enter)"))
             .alignment(Alignment::Center);
         
         f.render_widget(menu, chunks[1]);
@@ -516,7 +504,7 @@ pub fn render_program_list(f: &mut Frame, area: Rect, app_state: &AppState) {
                     Style::default().fg(Color::White)
                 };
                 
-                let content = format!("{} ({} commands)", program.name, program.command_count);
+                let content = format!("{} ({} commands)", program.name, program.commands.len());
                 ListItem::new(content).style(style)
             })
             .collect();
@@ -540,7 +528,7 @@ pub fn render_program_list(f: &mut Frame, area: Rect, app_state: &AppState) {
 }
 
 pub fn render_help_guide(f: &mut Frame, area: Rect) {
-    let help_text = r#"
+    let help_text = r#" 
 ARC-0 Assembly Emulator Help Guide
 
 === BASIC OPERATIONS ===
