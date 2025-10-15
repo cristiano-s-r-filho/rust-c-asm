@@ -35,6 +35,7 @@ pub fn execute_jmp(cpu: &mut CPU, op1: &Operand, _op2: &Operand, _memory: &mut W
         Operand::Immediate(imm) => *imm as u32,
         Operand::Address(addr) => *addr,
         Operand::Register(reg) => cpu.registers.get(reg)?,
+        Operand::String(_) => return Err("JMP does not support string operands".to_string()),
         Operand::None => return Err("JMP requires an operand".to_string()),
     };
     
@@ -49,6 +50,7 @@ pub fn execute_call(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut W
         Operand::Immediate(imm) => *imm as u32,
         Operand::Address(addr) => *addr,
         Operand::Register(reg) => cpu.registers.get(reg)?,
+        Operand::String(_) => return Err("CALL does not support string operands".to_string()),
         Operand::None => return Err("CALL requires an operand".to_string()),
     };
     

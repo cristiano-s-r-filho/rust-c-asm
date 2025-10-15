@@ -1,14 +1,14 @@
 extern crate asm_cli;
 use std::error::Error;
+use std::fs;
 use clap::Parser;
 use asm_cli::utils::{
     tui, 
 };
-#[derive(Parser)]
-#[command(version, about, long_about = None)]
+#[derive(Parser, Debug)]
+#[command(version, about = "A.R.C.S (Assembly Relay Command Scripts) Emulator", long_about = None)]
 struct Cli {
     /// Program file to load
-    #[arg(short, long)]
     program: Option<String>,
     
     /// Memory size in bytes
@@ -18,10 +18,17 @@ struct Cli {
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Parse command line arguments
-    let _cli = Cli::parse();
+    let cli = Cli::parse();
       
+    // Read program file if provided
+    let program_content = if let Some(program_path) = cli.program {
+        Some(fs::read_to_string(program_path)?)
+    } else {
+        None
+    };
+
     // Run TUI
-    let result = tui::run();
+    let result = tui::run(cli.memory, program_content);
     
     // Restore terminal
     if let Err(e) = result {

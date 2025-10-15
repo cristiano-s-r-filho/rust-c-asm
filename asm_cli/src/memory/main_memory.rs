@@ -1,5 +1,14 @@
 // PROTECTED Mode MEMORY implementation
 pub const MEMORY_MAX_SIZE: usize = ((u32::MAX)/1024) as usize; 
+
+pub const TEXT_START: u32 = 0x0000;
+pub const TEXT_SIZE: u32 = 0x8000; // 32KB
+pub const DATA_START: u32 = TEXT_START + TEXT_SIZE; // 0x8000
+pub const DATA_SIZE: u32 = 0x4000; // 16KB
+pub const STACK_SIZE: u32 = 0x4000; // 16KB
+pub const STACK_START: u32 = DATA_START + DATA_SIZE; // 0xC000
+pub const STACK_END: u32 = STACK_START + STACK_SIZE - 1; // 0xFFFF
+
 #[derive(Debug)]
 pub struct WorkMemory {
     pub memory: Vec<u8>,
@@ -12,7 +21,7 @@ impl WorkMemory {
         WorkMemory {
             memory: vec![0; size],
             size,
-            stack_pointer: (size - 1) as u32, // Initialize SP to top of memory
+            stack_pointer: STACK_END, // Initialize SP to top of stack section
         }
     }
 
@@ -101,6 +110,19 @@ impl WorkMemory {
         
         for (i, &instruction) in program.iter().enumerate() {
             self.write_u32(start_address + (i * 4) as u32, instruction)?;
+        }
+        
+        Ok(())
+    }
+
+    // Load data into memory starting at a specific address
+    pub fn load_data(&mut self, start_address: u32, data: &[u8]) -> Result<(), String> {
+        if start_address as usize + data.len() > self.size {
+            return Err("Data too large for memory".to_string());
+        }
+        
+        for (i, &byte) in data.iter().enumerate() {
+            self.write_u8(start_address + i as u32, byte)?;
         }
         
         Ok(())

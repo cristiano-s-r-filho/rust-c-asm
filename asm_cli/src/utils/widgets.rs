@@ -1,13 +1,60 @@
+use crate::utils::tui::{AppState, EditorMode, AppMode};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph};
 use ratatui::Frame;
 use ratatui::layout::Alignment;
-
 use crate::chips::cpu::CPU;
-use crate::memory::main_memory::WorkMemory;
-use crate::utils::tui::{AppState, EditorMode, AppMode};
+
+
+pub fn render_io_panel(f: &mut Frame, area: Rect, app_state: &AppState) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage(70), // Output
+            Constraint::Percentage(10), // Input
+            Constraint::Percentage(20), // Buttons
+        ])
+        .split(area);
+
+    let output_paragraph = Paragraph::new(app_state.io_device.output_buffer.as_str())
+        .block(Block::default().borders(Borders::ALL).title("I/O Output"));
+    f.render_widget(output_paragraph, chunks[0]);
+
+    let input_text = if app_state.mode == AppMode::IoInput {
+        format!("> {}", app_state.io_device.input_buffer)
+    } else {
+        "Press 'i' to enter input mode".to_string()
+    };
+
+    let input_paragraph = Paragraph::new(input_text)
+        .block(Block::default().borders(Borders::ALL).title("Input"));
+    f.render_widget(input_paragraph, chunks[1]);
+
+    let button_state = &app_state.io_device.button_state;
+    let buttons = vec![
+        Span::styled("Up", Style::default().fg(if button_state.up { Color::Green } else { Color::Gray })),
+        Span::raw(" "),
+        Span::styled("Down", Style::default().fg(if button_state.down { Color::Green } else { Color::Gray })),
+        Span::raw(" "),
+        Span::styled("Left", Style::default().fg(if button_state.left { Color::Green } else { Color::Gray })),
+        Span::raw(" "),
+        Span::styled("Right", Style::default().fg(if button_state.right { Color::Green } else { Color::Gray })),
+        Span::raw(" | "),
+        Span::styled("O", Style::default().fg(if button_state.circle { Color::Red } else { Color::Gray })),
+        Span::raw(" "),
+        Span::styled("T", Style::default().fg(if button_state.triangle { Color::Green } else { Color::Gray })),
+        Span::raw(" "),
+        Span::styled("S", Style::default().fg(if button_state.square { Color::Blue } else { Color::Gray })),
+        Span::raw(" "),
+        Span::styled("X", Style::default().fg(if button_state.cross { Color::Magenta } else { Color::Gray })),
+    ];
+
+    let button_paragraph = Paragraph::new(Line::from(buttons))
+        .block(Block::default().borders(Borders::ALL).title("Buttons"));
+    f.render_widget(button_paragraph, chunks[2]);
+}
 
 pub fn render_cpu_panel(f: &mut Frame, area: Rect, cpu: &CPU) {
     let chunks = Layout::default()
@@ -19,62 +66,88 @@ pub fn render_cpu_panel(f: &mut Frame, area: Rect, cpu: &CPU) {
         ])
         .split(area);
 
-    // General Purpose Registers - now displaying as f32
-    let general_purpose = format!(
-        "AX: {:<10.4}    BX: {:<10.4}\n         CX: {:<10.4}    DX: {:<10.4}",
-        f32::from_bits(cpu.registers.ax), f32::from_bits(cpu.registers.bx),
-        f32::from_bits(cpu.registers.cx), f32::from_bits(cpu.registers.dx)
-    );
+    // General Purpose Registers
+    let general_purpose = vec![
+        Line::from(vec![
+            Span::raw("AX: "),
+            Span::styled(format!("{:<10.4}", f32::from_bits(cpu.registers.ax)), Style::default().fg(Color::White)),
+            Span::raw("    BX: "),
+            Span::styled(format!("{:<10.4}", f32::from_bits(cpu.registers.bx)), Style::default().fg(Color::White)),
+        ]),
+        Line::from(vec![
+            Span::raw("CX: "),
+            Span::styled(format!("{:<10.4}", f32::from_bits(cpu.registers.cx)), Style::default().fg(Color::White)),
+            Span::raw("    DX: "),
+            Span::styled(format!("{:<10.4}", f32::from_bits(cpu.registers.dx)), Style::default().fg(Color::White)),
+        ]),
+    ];
     let general_paragraph = Paragraph::new(general_purpose)
         .block(Block::default().borders(Borders::ALL).title("General Purpose (f32)"))
         .style(Style::default().fg(Color::Red));
     f.render_widget(general_paragraph, chunks[0]);
 
     // Stack/Pointer Registers
-    let stack = format!(
-        "SP: {:#010x}    BP: {:#010x}\n         SI: {:#010x}    DI: {:#010x}",
-        cpu.registers.sp, cpu.registers.bp, cpu.registers.si, cpu.registers.di
-    );
+    let stack = vec![
+        Line::from(vec![
+            Span::raw("SP: "),
+            Span::styled(format!("{:#010x}", cpu.registers.sp), Style::default().fg(Color::White)),
+            Span::raw("    BP: "),
+            Span::styled(format!("{:#010x}", cpu.registers.bp), Style::default().fg(Color::White)),
+        ]),
+        Line::from(vec![
+            Span::raw("SI: "),
+            Span::styled(format!("{:#010x}", cpu.registers.si), Style::default().fg(Color::White)),
+            Span::raw("    DI: "),
+            Span::styled(format!("{:#010x}", cpu.registers.di), Style::default().fg(Color::White)),
+        ]),
+    ];
     let stack_paragraph = Paragraph::new(stack)
         .block(Block::default().borders(Borders::ALL).title("Stack/Pointer (u32)"))
         .style(Style::default().fg(Color::Yellow));
     f.render_widget(stack_paragraph, chunks[1]);
 
     // Control Registers
-    let control = format!(
-        "PC: {:#010x}    FLAGS: {:#010x}",
-        cpu.registers.pc, cpu.registers.flags
-    );
+    let control = vec![
+        Line::from(vec![
+            Span::raw("PC: "),
+            Span::styled(format!("{:#010x}", cpu.registers.pc), Style::default().fg(Color::White)),
+            Span::raw("    FLAGS: "),
+            Span::styled(format!("{:#010x}", cpu.registers.flags), Style::default().fg(Color::White)),
+        ]),
+    ];
     let control_paragraph = Paragraph::new(control)
         .block(Block::default().borders(Borders::ALL).title("Control (u32)"))
         .style(Style::default().fg(Color::Green));
     f.render_widget(control_paragraph, chunks[2]);
 }
 
-pub fn render_memory_panel(f: &mut Frame, area: Rect, memory: &WorkMemory, _app_state: &AppState) {
-    let mut content = String::new();
-    
-    // Show memory around the stack pointer
-    let sp = memory.get_stack_pointer();
-    let start_addr = sp.saturating_sub(32);
-    
-    for i in 0..16 {
-        let addr = start_addr + i * 4;
-        if addr as usize + 3 < memory.size {
-            if let Ok(value) = memory.read_u32(addr) {
-                content.push_str(&format!("{:#010x}: {:#010x}", addr, value));
-                if addr == sp {
-                    content.push_str("  <- SP");
-                }
-                content.push('\n');
-            }
+pub fn render_code_panel(f: &mut Frame, area: Rect, app_state: &AppState) {
+    let items: Vec<ListItem> = app_state.command_queue.iter().map(|cmd| {
+        let mut line = String::new();
+        if let Some(label) = &cmd.label {
+            line.push_str(&format!("{}: ", label));
         }
-    }
-    
-    let paragraph = Paragraph::new(content)
-        .block(Block::default().borders(Borders::ALL).title("Memory"))
+        line.push_str(&cmd.opcode);
+        if let Some(macro_name) = &cmd.macro_name {
+            line.push_str(&format!(" {}", macro_name));
+        }
+        if let Some(macro_args) = &cmd.macro_args {
+            line.push_str(&format!(" {}", macro_args.join(", ")));
+        }
+        if let Some(op1) = &cmd.operand1 {
+            line.push_str(&format!(" {:?}", op1));
+        }
+        if let Some(op2) = &cmd.operand2 {
+            line.push_str(&format!("« {:? }", op2));
+        }
+        ListItem::new(line)
+    }).collect();
+
+    let list = List::new(items)
+        .block(Block::default().borders(Borders::ALL).title("Code"))
         .style(Style::default().fg(Color::Cyan));
-    f.render_widget(paragraph, area);
+
+    f.render_widget(list, area);
 }
 
 pub fn render_menu(f: &mut Frame, area: Rect, app_state: &AppState) {
@@ -151,6 +224,9 @@ pub fn render_status_bar(f: &mut Frame, area: Rect, app_state: &AppState) {
         AppMode::CommandMode => "COMMAND MODE - Type commands and press Enter",
         AppMode::Running => "RUNNING - Executing commands",
         AppMode::Paused => "PAUSED - Use menu to control execution",
+        AppMode::IoScreen => "I/O SCREEN - Interacting with the I/O device",
+        AppMode::IoInput => "I/O INPUT - Type your input and press Enter",
+        AppMode::MacroDefinition => "MACRO DEFINITION - Type your macro and end with .endmacro",
     };
     
     let status_bar = Paragraph::new(status)
@@ -172,14 +248,14 @@ pub fn render_start_menu(f: &mut Frame, area: Rect, app_state: &AppState) {
         .split(area);
     
     // Top section with ANSI art
-    let art = r#" 
-     █████╗ ██████╗  ██████╗     ██████╗ 
-    ██╔══██╗██╔══██╗██╔════╝    ██╔═══██╗
-    ███████║██████╔╝██║         ██║   ██║
-    ██╔══██║██╔══██╗██║         ██║   ██║
-    ██║  ██║██║  ██║╚██████╗    ╚██████╔╝
-    ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝     ╚═════╝ 
-    "#;
+    let art = r###" 
+    █████╗ ██████╗  ██████╗███████╗
+   ██╔══██╗██╔══██╗██╔════╝██╔════╝
+   ███████║██████╔╝██║     ███████╗
+   ██╔══██║██╔══██╗██║     ╚════██║
+   ██║  ██║██║  ██║╚██████╗███████║
+   ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚══════╝
+    "###;
     
     let art_block = Block::default()
         .borders(Borders::NONE)
@@ -193,24 +269,30 @@ pub fn render_start_menu(f: &mut Frame, area: Rect, app_state: &AppState) {
     f.render_widget(art_paragraph, chunks[0]);
     
     // Middle section with info
-    let version_info = "ARC-0 Assembly Emulator v0.1.0";
+    let version_info = "A.R.C.S Assembly Emulator v1.0.0";
     let repo_info = "GitHub: https://github.com/yourusername/arc0-emulator";
     
-    let program_info = if app_state.loaded_program.is_some() {
-        let program = app_state.saved_programs.iter().find(|p| p.name == *app_state.loaded_program.as_ref().unwrap()).unwrap();
-        format!("Loaded: {} ({} commands, {:.1} KiB)", 
-                program.name,
-                program.commands.len(),
-                program.content.len() as f32 / 1024.0)
+    let program_info = if let Some(loaded_program_name) = &app_state.loaded_program {
+        if let Some(program) = app_state.saved_programs.iter().find(|p| &p.name == loaded_program_name) {
+            format!("Loaded: {} ({} commands, {:.1} KiB)", 
+                    program.name,
+                    program.commands.len(),
+                    program.content.len() as f32 / 1024.0)
+        } else {
+            // This handles programs loaded from files that are not in the saved list
+            format!("Loaded: {} ({} bytes)", 
+                    loaded_program_name,
+                    app_state.loaded_program_size)
+        }
     } else {
         "No program loaded".to_string()
     };
     
-    let middle_art = r#" 
+    let middle_art = r###" 
     ┌──────────────────────────────────────┐
-    │      ARC-0 Custom Assembly           │
+    │      A.R.C.S Custom Assembly           │
     └──────────────────────────────────────┘
-    "#;
+    "###;
     
     let info_text = format!("{}\n{}\n{}\n\n{}", version_info, repo_info, program_info, middle_art);
     
@@ -249,7 +331,7 @@ pub fn render_start_menu(f: &mut Frame, area: Rect, app_state: &AppState) {
             .title("Main Menu")
             .style(Style::default().fg(Color::Cyan)))
         .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
-        .highlight_symbol(">> ");
+        .highlight_symbol(">>");
     
     // Center the menu in the bottom section
     let menu_area = centered_rect(50, 70, chunks[2]);
@@ -275,6 +357,7 @@ pub fn render_settings_menu(f: &mut Frame, area: Rect, app_state: &AppState) {
         "Reset All States",
         "Toggle Command Queue Visibility",
         "Toggle Call Stack Visibility",
+        "I/O Screen",
         "Help Guide",
         "Back to Start Menu",
     ];
@@ -299,7 +382,7 @@ pub fn render_settings_menu(f: &mut Frame, area: Rect, app_state: &AppState) {
             .title("Settings")
             .style(Style::default().fg(Color::Cyan)))
         .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
-        .highlight_symbol(">> ");
+        .highlight_symbol(">>");
     
     // Center the menu
     let area = centered_rect(50, 60, area);
@@ -514,7 +597,7 @@ pub fn render_program_list(f: &mut Frame, area: Rect, app_state: &AppState) {
                 .borders(Borders::ALL)
                 .title("Saved Programs"))
             .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
-            .highlight_symbol(">> ");
+            .highlight_symbol(">>");
         
         f.render_widget(program_list, chunks[0]);
     }
@@ -527,9 +610,9 @@ pub fn render_program_list(f: &mut Frame, area: Rect, app_state: &AppState) {
     f.render_widget(instructions, chunks[1]);
 }
 
-pub fn render_help_guide(f: &mut Frame, area: Rect) {
-    let help_text = r#" 
-ARC-0 Assembly Emulator Help Guide
+pub fn render_help_guide(f: &mut Frame, area: Rect, app_state: &AppState) {
+    let help_text = r###" 
+ARC-S Assembly Emulator Help Guide
 
 === BASIC OPERATIONS ===
 - Use arrow keys to navigate menus
@@ -538,7 +621,7 @@ ARC-0 Assembly Emulator Help Guide
 - Press ESC to return to the start menu
 
 === COMMAND SYNTAX ===
-ARC-0 assembly uses a simple syntax:
+A.R.C.S assembly uses a simple syntax:
 - One command per line
 - Operands can be registers, immediates, or memory addresses
 
@@ -597,7 +680,7 @@ ADDW AX, 5        ; Add 5 to AX
 STRW [100], AX    ; Move AX to memory address 100
 
 Press any key to return.
-"#;
+"###;
     
     let help_block = Block::default()
         .borders(Borders::ALL)
@@ -607,7 +690,7 @@ Press any key to return.
     let help_paragraph = Paragraph::new(help_text)
         .block(help_block)
         .style(Style::default().fg(Color::White))
-        .scroll((0, 0));
+        .scroll((app_state.help_scroll, 0));
     
     f.render_widget(help_paragraph, area);
 }

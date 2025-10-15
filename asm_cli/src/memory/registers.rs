@@ -1,3 +1,5 @@
+use crate::memory::main_memory::{TEXT_START, STACK_END};
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Reg {
     AX, BX, CX, DX, EX, FX, GX, HX, // Added new GP registers
@@ -28,8 +30,8 @@ impl Registers {
     pub fn new() -> Self {
         Self {
             ax: 0, bx: 0, cx: 0, dx: 0, ex: 0, fx: 0, gx: 0, hx: 0,
-            sp: 0xFFFF, bp: 0, si: 0, di: 0,
-            pc: 0, flags: 0,
+            sp: STACK_END, bp: 0, si: 0, di: 0,
+            pc: TEXT_START, flags: 0,
         }
     }
     

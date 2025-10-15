@@ -5,6 +5,7 @@ Thank you for your interest in contributing to the ARC-0 Assembly Emulator! This
 ## Code of Conduct
 
 By participating in this project, you are expected to uphold our Code of Conduct:
+
 - Be respectful and inclusive
 - Exercise consideration and respect in your speech and actions
 - Attempt collaboration before conflict
@@ -17,6 +18,7 @@ By participating in this project, you are expected to uphold our Code of Conduct
 Before creating bug reports, please check the existing issues to avoid duplicates.
 
 When creating a bug report, include:
+
 - A clear, descriptive title
 - Detailed steps to reproduce the issue
 - Expected behavior vs actual behavior
@@ -26,6 +28,7 @@ When creating a bug report, include:
 ### Suggesting Enhancements
 
 Enhancement suggestions are welcome. Please provide:
+
 - A clear, descriptive title
 - A detailed description of the proposed enhancement
 - Examples of the proposed functionality
@@ -48,32 +51,33 @@ Enhancement suggestions are welcome. Please provide:
 5. Run the emulator: `cargo run`
 
 ## Project Structure
-asm_cli 
-|-> src 
-|---> chips
-|------> cpu.rs                    // Cpu Processor implementaition
-|------> call_stack.rs             // Call Stack H2 chip implementation
-|------> instruction_queue         // Instruction Cache H1 chip implementation
-|---> intructions
-|------> aritmethic.rs             // Aritmethic Instructions implementation
-|------> compare.rs                // Comparison and Pointer Instructions implementation
-|------> bitwise.rs                // Bitwise Instructions implementation
-|------> moves.rs                  // Moves and Memory Allocation Instructions implementation  
-|---> memory 
-|------> main_memory.rs            // Main RAM strip chip
-|------> register.rs               // Register implementation
-|---> utils
-|------> buffer.rs                 // [TO BE RETIRED]
-|------> command_processor.rs      // Command Processing and Forwarding
-|------> symbols.rs                // [FEATURE UNDER REVISION]
-|------> operand.rs                // Operand Definitions
-|------> tui.rs                    // App State, Screens and Event handling definitions
-|------> widgets.rs                // Widgets and Screens for rendering 
-|--> lib.rs                        // Library definitions for when we post on Cargo (WIP)
-|--> main.rs                       // Exit endpoint. 
-|- Cargo.lock                      
-|- Cargo.toml                      // Dependencies Management and Versioning.
 
+asm_cli
+|-> src
+|---> chips
+|------> cpu.rs                    // Cpu Processor implementaition.
+|------> call_stack.rs             // Call Stack H2 chip implementation.
+|------> instruction_queue         // Instruction Cache H1 chip implementation.
+|---> intructions
+|------> aritmethic.rs             // Aritmethic Instructions implementation.
+|------> compare.rs                // Comparison and Pointer Instructions implementation.
+|------> bitwise.rs                // Bitwise Instructions implementation.
+|------> moves.rs                  // Moves and Memory Allocation Instructions implementation.  
+|------> io.rs                     // I/O Instructions implementations.
+|------> system.rs                 // System Level Instructions implemenations.
+|---> memory
+|------> main_memory.rs            // Main RAM strip chip.
+|------> register.rs               // Registers implementation.
+|---> utils
+|------> command_processor.rs      // Two-Pass Full Assembler implementation
+|------> symbols.rs                // [FEATURE UNDER REVISION]
+|------> operand.rs                // Operand Definitions for Assembler
+|------> tui.rs                    // App State, Modes and Event handling definitions
+|------> widgets.rs                // Widgets and Screens for rendering.
+|--> lib.rs                        // Library definitions for when we post on Cargo (WIP)
+|--> main.rs                       // Main Exit endpoint for execution.
+|- Cargo.lock
+|- Cargo.toml                      // Dependencies Management and Versioning.
 
 ## Coding Guidelines
 
@@ -90,11 +94,15 @@ Please ensure your code passes all tests:
 ```bash
 cargo test
 ```
+
 Add tests for new functionality to maintain test coverage.
 
 ## Documentation
-* Update documentation when adding new features
 
-* Ensure code comments are clear and helpful
+- Update documentation when adding new features
 
-* Keep the README.md up to date with new functionality
+- Ensure code comments are clear and helpful
+
+- Keep the README.md up to date with new functionality.
+
+- Keep the DOCUMENTATION.md up to date with new functionality.

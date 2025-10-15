@@ -1,32 +1,25 @@
-# ARC - 0  | Rust-Based Assembly EMULATOR
+# A.R.C.S  | Rust-Based Custom Assembly Emulator
 
 ```rust
-                                             █████╗   ██████╗  ██████╗   ██████╗ 
-                                            ██╔══██╗ ██╔══██╗ ██╔════╝  ██╔═══██╗
-                                            ███████║ ██████╔╝ ██║       ██║   ██║
-                                            ██╔══██║ ██╔══██╗ ██║       ██║   ██║
-                                            ██║  ██║ ██║  ██║ ╚██████╗  ╚██████╔╝
-                                            ╚═╝  ╚═╝ ╚═╝  ╚═╝  ╚═════╝   ╚═════╝
+                █████╗  ██████╗    ██████╗ ███████╗
+               ██╔══██╗ ██╔══██╗  ██╔════╝ ██╔════╝
+               ███████║ ██████╔╝  ██║      ███████╗
+               ██╔══██║ ██╔══██╗  ██║      ╚════██║
+               ██║  ██║ ██║  ██║  ╚██████╗ ███████║
+               ╚═╝  ╚═╝ ╚═╝  ╚═╝   ╚═════╝ ╚══════╝
  ```
- 
- <div align="center">
-   
-     **A custom x86-inspired assembly architecture emulator with ARC-0 assembly language support**
-     
 
+A custom x86-inspired assembly architecture emulator with ARC-0 assembly language support
 
 [![Rust](https://img.shields.io/badge/Rust-1.60%2B-orange?logo=rust)](https://www.rust-lang.org/)
 
 [![License](https://img.shields.io/badge/License-MIT%2FApache--2.0-blue)](#license)
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/cristiano-s-r-filho/rust-c-asm/rust.yml?branch=main)](https://github.com/cristiano-s-r-filho/rust-c-asm/actions)
-</div>
-</div>
-<div align="center">
-  
-    **Explore the world of assembly programming with ARC-0!**
+[![Build Status](https://img.shields.io/github/actions/workflow/status/cristiano-s-r-filho/rust-c-asm/asm_cli/rust.yml?branch=main)](https://github.com/cristiano-s-r-filho/rust-c-asm/asm_cli/ctions)
 
-</div> ```
+**Explore the world of assembly programming with ARC-0!**
+
+**For detailed information about the emulator's architecture, usage, and features, please see the [full documentation](DOCUMENTATION.md).**
 
 ## Overview
 
@@ -45,7 +38,7 @@ ARC-0 Assembly Emulator is a terminal-based emulator for a custom 8086-inspired 
 
 The emulator implements a custom architecture with:
 
-- 32-bit registers (AX, BX, CX, DX, EX, FX, GX, HX, SP, BP, SI, DI)
+- 32-bit General and Pointer registers (AX, BX, CX, DX, EX, FX, GX, HX, SP, BP, SI, DI)
 - Segment registers (CS, DS, SS, ES)
 - Control registers (PC, FLAGS)
 - 64KB addressable memory space
@@ -63,20 +56,27 @@ The emulator implements a custom architecture with:
 
 To build and run this project:
 
-1.  Clone the repository:
+1. Clone the repository:
+
     ```bash
     git clone https://github.com/cristiano-s-r-filho/rust-c-asm.git
     ```
-2.  Navigate to the project directory:
+
+2. Navigate to the project directory:
+
     ```bash
     cd rust-c-asm
     cd asm_cli
     ```
-3.  Build the project using Cargo:
+
+3. Build the project using Cargo:
+
     ```bash
     cargo build
     ```
-4.  Execute the compiled program:
+
+4. Execute the compiled program(with or without options):
+
     ```bash
     cargo run
     ```

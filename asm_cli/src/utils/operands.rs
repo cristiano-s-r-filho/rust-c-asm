@@ -6,13 +6,20 @@ pub enum Operand {
     Immediate(u16),
     Address(u32),
     Label(String),
+    String(String),
     None,
 }
 
 pub fn parse_operand(input: &str) -> Result<Operand, String> {
     let input = input.trim();
 
-    // 1. Check for Register
+    // 1. Check for String literal
+    if input.starts_with('"') && input.ends_with('"') {
+        let s = input[1..input.len() - 1].to_string();
+        return Ok(Operand::String(s));
+    }
+
+    // 2. Check for Register
     match input.to_lowercase().as_str() {
         "ax" => return Ok(Operand::Register(Reg::AX)),
         "bx" => return Ok(Operand::Register(Reg::BX)),
@@ -31,7 +38,7 @@ pub fn parse_operand(input: &str) -> Result<Operand, String> {
         _ => {} // Not a register, continue
     };
 
-    // 2. Check for Address (e.g., [123] or [0x7B])
+    // 3. Check for Address (e.g., [123] or [0x7B])
     if input.starts_with('[') && input.ends_with(']') {
         let addr_str = &input[1..input.len() - 1];
         let addr = if addr_str.starts_with("0x") {
@@ -48,7 +55,7 @@ pub fn parse_operand(input: &str) -> Result<Operand, String> {
         }
     }
 
-    // 3. Check for Immediate value
+    // 4. Check for Immediate value
     let imm = if input.starts_with("0x") {
         u16::from_str_radix(&input[2..], 16)
     } else if input.starts_with("0b") {
@@ -60,7 +67,7 @@ pub fn parse_operand(input: &str) -> Result<Operand, String> {
         return Ok(Operand::Immediate(num));
     }
 
-    // 4. If all else fails, it's a Label
+    // 5. If all else fails, it's a Label
     // Basic validation: labels shouldn't contain whitespace or brackets.
     if !input.is_empty() && !input.contains(|c: char| c.is_whitespace() || c == '[' || c == ']') {
         return Ok(Operand::Label(input.to_string()));

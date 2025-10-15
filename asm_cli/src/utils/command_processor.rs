@@ -1,14 +1,24 @@
+use crate::chips::io_device::IoDevice;
 use crate::chips::cpu::CPU;
-use crate::memory::main_memory::WorkMemory;
+use crate::memory::main_memory::{WorkMemory, TEXT_START, DATA_START};
 use crate::utils::operands::{Operand, parse_operand};
 use crate::memory::registers::Reg;
+use crate::instructions::io;
 use crate::instructions::{
     moves,
     aritmethic, 
     bitwise, 
     compare, 
+    system, 
 };
 use std::collections::HashMap;
+
+#[derive(Debug, Clone)]
+pub struct Macro {
+    pub name: String,
+    pub args: Vec<String>,
+    pub body: Vec<Command>,
+}
 
 #[derive(Debug, Clone)]
 pub struct Command {
@@ -16,28 +26,68 @@ pub struct Command {
     pub operand1: Option<Operand>,
     pub operand2: Option<Operand>,
     pub label: Option<String>,
+    pub macro_name: Option<String>,
+    pub macro_args: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Section {
+    Text,
+    Data,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct AssembledProgram {
+    pub text: Vec<u32>,
+    pub data: Vec<u8>,
 }
 
 pub fn parse_command(input: &str) -> Result<Command, String> {
-    let mut parts = input.trim().splitn(2, char::is_whitespace);
+    let comment_start = input.find(';');
+    let without_comment = if let Some(index) = comment_start {
+        &input[..index]
+    } else {
+        input
+    };
+    let mut parts = without_comment.trim().splitn(2, char::is_whitespace);
     let first_part = parts.next().unwrap_or("").to_string();
     
     if first_part.is_empty() {
-        return Err("Empty command".to_string());
-    }
+                return Ok(Command { opcode: "".to_string(), operand1: None, operand2: None, label: None, macro_name: None, macro_args: None });    }
 
     let (label, remaining) = if first_part.ends_with(':') {
         (Some(first_part[..first_part.len()-1].to_string()), parts.next().unwrap_or(""))
     } else {
-        (None, input.trim())
+        (None, without_comment.trim())
     };
 
     let mut command_parts = remaining.splitn(2, char::is_whitespace);
     let opcode = command_parts.next().unwrap_or("").to_string();
     let operands_str = command_parts.next();
 
+    if opcode == ".macro" {
+        let mut parts = operands_str.unwrap_or("").split_whitespace();
+        let name = parts.next().unwrap_or("").to_string();
+        let args: Vec<String> = parts.map(|s| s.to_string()).collect();
+        return Ok(Command { opcode, operand1: None, operand2: None, label, macro_name: Some(name), macro_args: Some(args) });
+    } else if opcode == ".endmacro" {
+        return Ok(Command { opcode, operand1: None, operand2: None, label, macro_name: None, macro_args: None });
+    }
+
+    
+
+    if opcode.starts_with('.') {
+        let mut operand1 = None;
+        if let Some(operands_str) = operands_str {
+            if !operands_str.is_empty() {
+                operand1 = parse_operand(operands_str.trim()).ok();
+            }
+        }
+        return Ok(Command { opcode, operand1, operand2: None, label, macro_name: None, macro_args: None });
+    }
+
     if opcode.is_empty() && label.is_some() {
-        return Ok(Command { opcode: "".to_string(), operand1: None, operand2: None, label });
+        return Ok(Command { opcode: "".to_string(), operand1: None, operand2: None, label, macro_name: None, macro_args: None });
     }
     
     let mut operand1 = None;
@@ -59,10 +109,10 @@ pub fn parse_command(input: &str) -> Result<Command, String> {
         }
     }
     
-    Ok(Command { opcode, operand1, operand2, label })
+    Ok(Command { opcode, operand1, operand2, label, macro_name: None, macro_args: None })
 }
 
-pub fn execute_command(command: Command, cpu: &mut CPU, memory: &mut WorkMemory) -> Result<(), String> {
+pub fn execute_command(command: Command, cpu: &mut CPU, memory: &mut WorkMemory, io_device: &mut IoDevice) -> Result<(), String> {
     let op1 = command.operand1.clone().unwrap_or(Operand::None);
     let op2 = command.operand2.clone().unwrap_or(Operand::None);
     
@@ -98,39 +148,158 @@ pub fn execute_command(command: Command, cpu: &mut CPU, memory: &mut WorkMemory)
         "jle" => compare::execute_jle(cpu, &op1, &op2, memory),
         "js" => compare::execute_js(cpu, &op1, &op2, memory),
         "jco" => compare::execute_jco(cpu, &op1, &op2, memory),
+        "in" => io::execute_in(cpu, &op1, &op2, memory, io_device),
+        "out" => io::execute_out(cpu, &op1, &op2, memory, io_device),
+        "halt" => system::execute_halt(cpu, &op1, &op2, memory),
         "" => Ok(()), // Label-only line
         _ => Err(format!("Unknown opcode: {}", command.opcode)),
     }
 }
 
-pub fn assemble_program(commands: &[Command]) -> Result<Vec<u32>, String> {
+pub fn assemble_program(commands: &[Command], macros: &[Macro]) -> Result<AssembledProgram, String> {
     let mut symbol_table = HashMap::new();
-    let mut current_address = 0;
+    let mut text_address_counter = TEXT_START;
+    let mut data_address_counter = DATA_START;
+    let mut current_section = Section::Text;
 
     // Pass 1: Build symbol table
     for command in commands {
+        if command.opcode == ".text" {
+            current_section = Section::Text;
+            continue;
+        } else if command.opcode == ".data" {
+            current_section = Section::Data;
+            continue;
+        }
+
         if let Some(label) = &command.label {
             if symbol_table.contains_key(label) {
                 return Err(format!("Duplicate label: {}", label));
             }
-            symbol_table.insert(label.clone(), current_address);
+            let address = match current_section {
+                Section::Text => text_address_counter,
+                Section::Data => data_address_counter,
+            };
+            symbol_table.insert(label.clone(), address);
         }
+
         if !command.opcode.is_empty() {
-            current_address += 4; // Assuming each instruction is 4 bytes
+            let size = get_instruction_or_data_size(command)?;
+            match current_section {
+                Section::Text => text_address_counter += size,
+                Section::Data => data_address_counter += size,
+            }
         }
     }
 
     // Pass 2: Assemble
-    let mut machine_code = Vec::new();
+    let mut expanded_commands = Vec::new();
     for command in commands {
+        if let Some(macro_to_expand) = macros.iter().find(|m| m.name == command.opcode) {
+            let mut expanded_macro = macro_to_expand.body.clone();
+            for (i, arg) in macro_to_expand.args.iter().enumerate() {
+                let value = match i {
+                    0 => command.operand1.clone(),
+                    1 => command.operand2.clone(),
+                    _ => None,
+                };
+                for cmd in &mut expanded_macro {
+                    if let Some(op1) = &mut cmd.operand1 {
+                        if let Operand::Label(l) = op1 {
+                            if l == arg {
+                                *op1 = value.clone().ok_or_else(|| format!("Missing argument for macro parameter: {}", arg))?;
+                            }
+                        }
+                    }
+                    if let Some(op2) = &mut cmd.operand2 {
+                        if let Operand::Label(l) = op2 {
+                            if l == arg {
+                                *op2 = value.clone().ok_or_else(|| format!("Missing argument for macro parameter: {}", arg))?;
+                            }
+                        }
+                    }
+                }
+            }
+            expanded_commands.extend(expanded_macro);
+        } else {
+            expanded_commands.push(command.clone());
+        }
+    }
+
+    let mut assembled_program = AssembledProgram::default();
+    current_section = Section::Text;
+    for command in &expanded_commands {
+        if command.opcode == ".text" {
+            current_section = Section::Text;
+            continue;
+        } else if command.opcode == ".data" {
+            current_section = Section::Data;
+            continue;
+        }
+
         if command.opcode.is_empty() {
             continue;
         }
-        let instruction = assemble_instruction(command, &symbol_table)?;
-        machine_code.push(instruction);
+
+        match current_section {
+            Section::Text => {
+                let instruction = assemble_instruction(command, &symbol_table)?;
+                assembled_program.text.push(instruction);
+            }
+            Section::Data => {
+                let data_bytes = assemble_data(command, &symbol_table)?;
+                assembled_program.data.extend(data_bytes);
+            }
+        }
     }
 
-    Ok(machine_code)
+    Ok(assembled_program)
+}
+
+fn get_instruction_or_data_size(command: &Command) -> Result<u32, String> {
+    if command.opcode.starts_with('.') { // Directive
+        match command.opcode.as_str() {
+            ".word" => Ok(4),
+            ".byte" => Ok(1),
+            ".string" => {
+                if let Some(Operand::String(s)) = &command.operand1 {
+                    Ok(s.len() as u32)
+                } else {
+                    Err(".string directive requires a string operand".to_string())
+                }
+            }
+            _ => Err(format!("Unknown directive: {}", command.opcode)),
+        }
+    } else { // Instruction
+        Ok(4) // All instructions are 4 bytes
+    }
+}
+
+fn assemble_data(command: &Command, _symbol_table: &HashMap<String, u32>) -> Result<Vec<u8>, String> {
+    match command.opcode.as_str() {
+        ".word" => {
+            if let Some(Operand::Immediate(value)) = command.operand1 {
+                Ok((value as u32).to_le_bytes().to_vec())
+            } else {
+                Err(".word directive requires an immediate value".to_string())
+            }
+        }
+        ".byte" => {
+            if let Some(Operand::Immediate(value)) = command.operand1 {
+                Ok(vec![value as u8])
+            } else {
+                Err(".byte directive requires an immediate value".to_string())
+            }
+        }
+        ".string" => {
+            if let Some(Operand::String(s)) = &command.operand1 {
+                Ok(s.as_bytes().to_vec())
+            } else {
+                Err(".string directive requires a string operand".to_string())
+            }
+        }
+        _ => Err(format!("Unknown directive in data section: {}", command.opcode)),
+    }
 }
 
 fn assemble_instruction(command: &Command, symbol_table: &HashMap<String, u32>) -> Result<u32, String> {
@@ -170,6 +339,9 @@ fn assemble_instruction(command: &Command, symbol_table: &HashMap<String, u32>) 
         "jle" => assemble_addr(0x48, op1, symbol_table),
         "js" => assemble_addr(0x49, op1, symbol_table),
         "jco" => assemble_addr(0x4A, op1, symbol_table),
+        "in" => assemble_reg(0x50, op1),
+        "out" => assemble_reg_or_imm(0x51, op1),
+        "halt" => Ok(0xFF << 24),
         _ => Err(format!("Unsupported instruction: {}", opcode)),
     }
 }

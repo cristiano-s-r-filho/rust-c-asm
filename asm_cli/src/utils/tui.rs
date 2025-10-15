@@ -2,6 +2,8 @@ use crate::memory::registers::Reg;
 use std::collections::VecDeque;
 use std::io;
 use std::time::Duration;
+use std::fs;
+use std::path::Path;
 
 use crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
@@ -14,24 +16,23 @@ use ratatui::Frame;
 use ratatui::Terminal;
 
 use crate::chips::cpu::CPU;
-use crate::memory::main_memory::WorkMemory;
-use crate::utils::command_processor::{self, execute_command, parse_command, Command};
-use crate::utils::widgets::{
-    render_cpu_panel, render_memory_panel, render_menu, render_input_panel, 
-    render_status_bar, render_start_menu, render_settings_menu, 
-    render_program_editor, render_help_guide, render_program_naming, 
-    render_program_list,
-};
+use crate::memory::main_memory::{WorkMemory, TEXT_START, DATA_START};
+use crate::chips::io_device::IoDevice;
+use crate::utils::command_processor::{self, parse_command, Command, AssembledProgram, Macro};
+use crate::utils::widgets::*;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum AppMode {
     StartMenu,
     CommandMode,
     Running,
     Paused,
+    IoScreen,
+    IoInput,
+    MacroDefinition,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum EditorMode {
     Normal,
     Edit,
@@ -45,13 +46,15 @@ pub struct ProgramInfo {
     pub name: String,
     pub content: String,
     pub commands: VecDeque<Command>,
-    pub machine_code: Vec<u32>,
+    pub assembled_program: AssembledProgram,
 }
 
 #[derive(Debug)]
 pub struct AppState {
     pub cpu: CPU,
     pub work_memory: WorkMemory,
+    pub io_device: IoDevice,
+    pub macros: Vec<Macro>,
     pub should_quit: bool,
     pub mode: AppMode,
     pub input_buffer: String,
@@ -78,9 +81,11 @@ pub struct AppState {
     pub saved_programs: Vec<ProgramInfo>,
     pub program_list_selected: usize,
     pub editing_program_index: Option<usize>,
+    pub parsing_errors: Vec<String>,
+    pub help_scroll: u16,
 }
 
-pub fn run() -> io::Result<()> {
+pub fn run(memory_size: usize, program_content: Option<String>) -> io::Result<()> {
     // Initialize terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -88,24 +93,71 @@ pub fn run() -> io::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     
+    let mut initial_mode = AppMode::StartMenu;
+    let mut initial_message: Option<String> = None;
+    let mut initial_command_queue = VecDeque::new();
+    let mut initial_loaded_program: Option<String> = None;
+    let mut initial_loaded_program_size: usize = 0;
+    let mut initial_parsing_errors: Vec<String> = Vec::new();
+    let mut initial_assembled_program: Option<AssembledProgram> = None;
+
+    if let Some(content) = program_content {
+        let lines: Vec<&str> = content.lines().collect();
+        let mut commands = VecDeque::new();
+        let mut current_parsing_errors = Vec::new();
+
+        for (line_num, line) in lines.iter().enumerate() {
+            let trimmed_line = line.trim();
+            if trimmed_line.is_empty() {
+                continue;
+            }
+            match parse_command(trimmed_line) {
+                Ok(command) => commands.push_back(command),
+                Err(e) => current_parsing_errors.push(format!("Line {}: {}", line_num + 1, e)),
+            }
+        }
+
+        if !current_parsing_errors.is_empty() {
+            initial_message = Some(format!("Parsing errors:\n{}", current_parsing_errors.join("\n")));
+            initial_parsing_errors = current_parsing_errors;
+        } else {
+            let commands_vec: Vec<Command> = commands.clone().into();
+            match command_processor::assemble_program(&commands_vec, &Vec::new()) {
+                Ok(assembled_program) => {
+                    initial_mode = AppMode::Paused;
+                    initial_message = Some("Program loaded from file. Press 'Run All' to start.".to_string());
+                    initial_command_queue = commands;
+                    initial_loaded_program = Some("File Program".to_string());
+                    initial_loaded_program_size = content.len();
+                    initial_assembled_program = Some(assembled_program);
+                },
+                Err(e) => {
+                    initial_message = Some(format!("Assembly failed: {}", e));
+                }
+            }
+        }
+    }
+
     // Initialize app state
     let mut app_state = AppState {
         cpu: CPU::new(),
-        work_memory: WorkMemory::new(65536),
+        work_memory: WorkMemory::new(memory_size),
+        io_device: IoDevice::new(),
+        macros: Vec::new(),
         should_quit: false,
-        mode: AppMode::StartMenu,
+        mode: initial_mode,
+        last_message: initial_message.clone(),
+        message_is_error: initial_message.is_some() && initial_loaded_program.is_none(),
         input_buffer: String::new(),
-        command_queue: VecDeque::new(),
-        last_message: None,
-        message_is_error: false,
+        command_queue: initial_command_queue,
+        loaded_program: initial_loaded_program,
+        loaded_program_size: initial_loaded_program_size,
         cursor_position: 0,
         selected_menu_item: 0,
         show_command_queue: true,
         show_call_stack: true,
         settings_menu_active: false,
         settings_selected_item: 0,
-        loaded_program: None,
-        loaded_program_size: 0,
         editor_screen: false,
         editor_text: String::new(),
         editor_cursor_position: 0,
@@ -118,34 +170,48 @@ pub fn run() -> io::Result<()> {
         saved_programs: Vec::new(),
         program_list_selected: 0,
         editing_program_index: None,
+        parsing_errors: initial_parsing_errors,
+        help_scroll: 0,
     };
+
+    if let Some(assembled_program) = initial_assembled_program {
+        if app_state.work_memory.load_program(TEXT_START, &assembled_program.text).is_err() {
+            app_state.last_message = Some("Failed to load text section into memory.".to_string());
+            app_state.message_is_error = true;
+        }
+        if app_state.work_memory.load_data(DATA_START, &assembled_program.data).is_err() {
+            app_state.last_message = Some("Failed to load data section into memory.".to_string());
+            app_state.message_is_error = true;
+        }
+    }
     
-    // Add some sample programs
-    let commands1: Vec<Command> = vec![
-        parse_command("MOVI AX, 10").unwrap(),
-        parse_command("MOVI BX, 20").unwrap(),
-        parse_command("ADDW AX, BX").unwrap(),
-    ];
-    let machine_code1 = command_processor::assemble_program(&commands1).unwrap();
-    app_state.saved_programs.push(ProgramInfo {
-        name: "Example 1".to_string(),
-        content: "MOVI AX, 10\nMOVI BX, 20\nADDW AX, BX".to_string(),
-        commands: commands1.into(),
-        machine_code: machine_code1,
-    });
-    
-    let commands2: Vec<Command> = vec![
-        parse_command("MOVI CX, 5").unwrap(),
-        parse_command("MOVI DX, 3").unwrap(),
-        parse_command("SUBW CX, DX").unwrap(),
-    ];
-    let machine_code2 = command_processor::assemble_program(&commands2).unwrap();
-    app_state.saved_programs.push(ProgramInfo {
-        name: "Example 2".to_string(),
-        content: "MOVI CX, 5\nMOVI DX, 3\nSUBW CX, DX".to_string(),
-        commands: commands2.into(),
-        machine_code: machine_code2,
-    });
+    if !Path::new("programs").exists() {
+        fs::create_dir("programs")?;
+    }
+
+    for entry in fs::read_dir("programs")? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("arc") {
+            let content = fs::read_to_string(&path)?;
+            let name = path.file_stem().unwrap().to_str().unwrap().to_string();
+            let lines: Vec<&str> = content.lines().collect();
+            let mut commands = VecDeque::new();
+            for line in lines {
+                if let Ok(command) = parse_command(line) {
+                    commands.push_back(command);
+                }
+            }
+            let commands_vec: Vec<Command> = commands.clone().into();
+            let assembled_program = command_processor::assemble_program(&commands_vec, &Vec::new()).unwrap();
+            app_state.saved_programs.push(ProgramInfo {
+                name,
+                content,
+                commands,
+                assembled_program,
+            });
+        }
+    }
     
     // Main loop
     let result = run_app(&mut terminal, &mut app_state);
@@ -167,22 +233,27 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app_state: &mu
         
         // Process instructions if in running mode
         if app_state.mode == AppMode::Running {
-            match app_state.cpu.step(&mut app_state.work_memory) {
-                Ok(_) => {
-                    // Add delay between instructions
-                    std::thread::sleep(Duration::from_millis(100));
-                    
-                    // Stop if we've reached the end of memory or a HLT instruction
-                    if app_state.cpu.registers.pc >= app_state.work_memory.size as u32 {
+                    if app_state.cpu.halted {
                         app_state.mode = AppMode::Paused;
-                        app_state.last_message = Some("Program execution completed".to_string());
-                        app_state.message_is_error = false;
+                        app_state.last_message = Some("Program execution halted. Press Esc to return to the main menu.".to_string());
+                        app_state.message_is_error = false;            } else {
+                match app_state.cpu.step(&mut app_state.work_memory) {
+                    Ok(_) => {
+                        // Add delay between instructions
+                        std::thread::sleep(Duration::from_millis(100));
+                        
+                        // Stop if we've reached the end of memory
+                        if app_state.cpu.registers.pc >= app_state.work_memory.size as u32 {
+                            app_state.mode = AppMode::Paused;
+                            app_state.last_message = Some("Program execution completed".to_string());
+                            app_state.message_is_error = false;
+                        }
+                    },
+                    Err(e) => {
+                        app_state.last_message = Some(e);
+                        app_state.message_is_error = true;
+                        app_state.mode = AppMode::Paused;
                     }
-                },
-                Err(e) => {
-                    app_state.last_message = Some(e);
-                    app_state.message_is_error = true;
-                    app_state.mode = AppMode::Paused;
                 }
             }
         }
@@ -196,7 +267,7 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app_state: &mu
 fn ui(f: &mut Frame, app_state: &AppState) {
     if app_state.show_help {
         f.render_widget(Clear, f.area());
-        render_help_guide(f, centered_rect(80, 80, f.area()));
+        render_help_guide(f, centered_rect(80, 80, f.area()), app_state);
         return;
     }
     
@@ -226,6 +297,12 @@ fn ui(f: &mut Frame, app_state: &AppState) {
         return;
     }
     
+    if app_state.mode == AppMode::IoScreen {
+        f.render_widget(Clear, f.area());
+        render_io_panel(f, f.area(), app_state);
+        return;
+    }
+
     if app_state.mode == AppMode::StartMenu {
         f.render_widget(Clear, f.area());
         render_start_menu(f, f.area(), app_state);
@@ -258,9 +335,9 @@ fn ui(f: &mut Frame, app_state: &AppState) {
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(content_chunks[0]);
     
-    // Render CPU and memory panels
+    // Render CPU and code panels
     render_cpu_panel(f, top_chunks[0], &app_state.cpu);
-    render_memory_panel(f, top_chunks[1], &app_state.work_memory, app_state);
+    render_code_panel(f, top_chunks[1], app_state);
     
     // Input area
     render_input_panel(f, content_chunks[1], app_state);
@@ -309,7 +386,6 @@ fn handle_events(app_state: &mut AppState) -> io::Result<()> {
                                 app_state.mode = AppMode::Paused;
                                 
                                 if app_state.loaded_program.is_some() {
-                                    app_state.cpu.registers.set(&Reg::PC, 0).unwrap();
                                     app_state.last_message = Some(format!("Program '{}' loaded. Press 'Run All' to start.", 
                                         app_state.loaded_program.as_ref().unwrap()));
                                     app_state.message_is_error = false;
@@ -344,7 +420,7 @@ fn handle_events(app_state: &mut AppState) -> io::Result<()> {
                         }
                     },
                     KeyCode::Down if app_state.settings_menu_active => {
-                        if app_state.settings_selected_item < 4 {
+                        if app_state.settings_selected_item < 5 {
                             app_state.settings_selected_item += 1;
                         }
                     },
@@ -372,10 +448,15 @@ fn handle_events(app_state: &mut AppState) -> io::Result<()> {
                                 app_state.show_call_stack = !app_state.show_call_stack;
                             },
                             3 => {
+                                // I/O Screen
+                                app_state.mode = AppMode::IoScreen;
+                                app_state.settings_menu_active = false;
+                            },
+                            4 => {
                                 // Show help guide
                                 app_state.show_help = true;
                             },
-                            4 => {
+                            5 => {
                                 // Back to start menu
                                 app_state.settings_menu_active = false;
                             },
@@ -400,7 +481,11 @@ fn handle_events(app_state: &mut AppState) -> io::Result<()> {
                         match app_state.editor_menu_selected {
                             0 => create_new_program(app_state),
                             1 => load_program_list(app_state),
-                            2 => save_program_prompt(app_state),
+                            2 => {
+                                app_state.editor_mode = EditorMode::Naming;
+                                app_state.program_name_input.clear();
+                                app_state.program_name_cursor = 0;
+                            },
                             3 => exit_editor(app_state),
                             _ => {}
                         }
@@ -573,7 +658,24 @@ fn handle_events(app_state: &mut AppState) -> io::Result<()> {
                         app_state.editor_screen = false;
                     },
                     
+                    KeyCode::Up if app_state.show_help => {
+                        if app_state.help_scroll > 0 {
+                            app_state.help_scroll -= 1;
+                        }
+                    },
+                    KeyCode::Down if app_state.show_help => {
+                        app_state.help_scroll += 1;
+                    },
+
                     // Exit help guide
+                    KeyCode::Up if app_state.show_help => {
+                        if app_state.help_scroll > 0 {
+                            app_state.help_scroll -= 1;
+                        }
+                    },
+                    KeyCode::Down if app_state.show_help => {
+                        app_state.help_scroll += 1;
+                    },
                     KeyCode::Esc if app_state.show_help => {
                         app_state.show_help = false;
                     },
@@ -598,7 +700,7 @@ fn handle_events(app_state: &mut AppState) -> io::Result<()> {
                         match app_state.selected_menu_item {
                             0 => {
                                 if app_state.loaded_program.is_some() {
-                                    app_state.cpu.registers.set(&Reg::PC, 0).unwrap();
+                                    app_state.cpu.registers.set(&Reg::PC, TEXT_START).unwrap();
                                     app_state.mode = AppMode::Running;
                                 } else {
                                     app_state.last_message = Some("No program loaded to run.".to_string());
@@ -607,7 +709,7 @@ fn handle_events(app_state: &mut AppState) -> io::Result<()> {
                             },
                             1 => {
                                 if let Some(command) = app_state.command_queue.pop_front() {
-                                    if let Err(e) = execute_command(command, &mut app_state.cpu, &mut app_state.work_memory) {
+                                    if let Err(e) = command_processor::execute_command(command, &mut app_state.cpu, &mut app_state.work_memory, &mut app_state.io_device) {
                                         app_state.last_message = Some(e);
                                         app_state.message_is_error = true;
                                     }
@@ -634,7 +736,31 @@ fn handle_events(app_state: &mut AppState) -> io::Result<()> {
                     KeyCode::Enter if app_state.mode == AppMode::CommandMode => {
                         match parse_command(&app_state.input_buffer) {
                             Ok(command) => {
-                                app_state.command_queue.push_back(command);
+                                if app_state.mode == AppMode::MacroDefinition {
+                                    if command.opcode == ".endmacro" {
+                                        app_state.mode = AppMode::Paused;
+                                        let new_macro = Macro {
+                                            name: app_state.macros.last().unwrap().name.clone(),
+                                            args: app_state.macros.last().unwrap().args.clone(),
+                                            body: app_state.macros.last().unwrap().body.clone(),
+                                        };
+                                        app_state.macros.pop();
+                                        app_state.macros.push(new_macro);
+                                    } else {
+                                        app_state.macros.last_mut().unwrap().body.push(command);
+                                    }
+                                } else if command.opcode == ".macro" {
+                                    app_state.mode = AppMode::MacroDefinition;
+                                    let name = command.macro_name.unwrap_or_default();
+                                    let args = command.macro_args.unwrap_or_default();
+                                    app_state.macros.push(Macro {
+                                        name,
+                                        args,
+                                        body: Vec::new(),
+                                    });
+                                } else {
+                                    app_state.command_queue.push_back(command);
+                                }
                                 app_state.input_buffer.clear();
                                 app_state.cursor_position = 0;
                             },
@@ -654,6 +780,8 @@ fn handle_events(app_state: &mut AppState) -> io::Result<()> {
                             app_state.mode = AppMode::Paused;
                         } else if app_state.mode == AppMode::Paused {
                             app_state.mode = AppMode::CommandMode;
+                        } else if app_state.mode == AppMode::IoScreen {
+                            app_state.mode = AppMode::Paused;
                         }
                         // Clear input buffer when switching to command mode
                         if app_state.mode == AppMode::CommandMode {
@@ -661,7 +789,36 @@ fn handle_events(app_state: &mut AppState) -> io::Result<()> {
                             app_state.cursor_position = 0;
                         }
                     },
+
+                    // IO Screen button presses
+                    KeyCode::Up if app_state.mode == AppMode::IoScreen => app_state.io_device.button_state.up = true,
+                    KeyCode::Down if app_state.mode == AppMode::IoScreen => app_state.io_device.button_state.down = true,
+                    KeyCode::Left if app_state.mode == AppMode::IoScreen => app_state.io_device.button_state.left = true,
+                    KeyCode::Right if app_state.mode == AppMode::IoScreen => app_state.io_device.button_state.right = true,
+                    KeyCode::Char('z') if app_state.mode == AppMode::IoScreen => app_state.io_device.button_state.circle = true,
+                    KeyCode::Char('x') if app_state.mode == AppMode::IoScreen => app_state.io_device.button_state.triangle = true,
+                    KeyCode::Char('c') if app_state.mode == AppMode::IoScreen => app_state.io_device.button_state.square = true,
+                    KeyCode::Char('v') if app_state.mode == AppMode::IoScreen => app_state.io_device.button_state.cross = true,
+                    KeyCode::Char('i') if app_state.mode == AppMode::IoScreen => app_state.mode = AppMode::IoInput,
+
+                    // IO Screen input
+                    KeyCode::Char(c) if app_state.mode == AppMode::IoInput => app_state.io_device.input_buffer.push(c),
+                    KeyCode::Backspace if app_state.mode == AppMode::IoInput => { app_state.io_device.input_buffer.pop(); },
+                    KeyCode::Enter if app_state.mode == AppMode::IoInput => app_state.mode = AppMode::IoScreen,
                     
+                    _ => {}
+                }
+            } else if key.kind == KeyEventKind::Release {
+                match key.code {
+                    // IO Screen button releases
+                    KeyCode::Up if app_state.mode == AppMode::IoScreen => app_state.io_device.button_state.up = false,
+                    KeyCode::Down if app_state.mode == AppMode::IoScreen => app_state.io_device.button_state.down = false,
+                    KeyCode::Left if app_state.mode == AppMode::IoScreen => app_state.io_device.button_state.left = false,
+                    KeyCode::Right if app_state.mode == AppMode::IoScreen => app_state.io_device.button_state.right = false,
+                    KeyCode::Char('z') if app_state.mode == AppMode::IoScreen => app_state.io_device.button_state.circle = false,
+                    KeyCode::Char('x') if app_state.mode == AppMode::IoScreen => app_state.io_device.button_state.triangle = false,
+                    KeyCode::Char('c') if app_state.mode == AppMode::IoScreen => app_state.io_device.button_state.square = false,
+                    KeyCode::Char('v') if app_state.mode == AppMode::IoScreen => app_state.io_device.button_state.cross = false,
                     _ => {}
                 }
             }
@@ -681,88 +838,43 @@ fn create_new_program(app_state: &mut AppState) {
 }
 
 fn load_program_list(app_state: &mut AppState) {
+    app_state.saved_programs.clear();
+    for entry in fs::read_dir("programs").unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("arc") {
+            let content = fs::read_to_string(&path).unwrap();
+            let name = path.file_stem().unwrap().to_str().unwrap().to_string();
+            let lines: Vec<&str> = content.lines().collect();
+            let mut commands = VecDeque::new();
+            for line in lines {
+                if let Ok(command) = parse_command(line) {
+                    commands.push_back(command);
+                }
+            }
+            let commands_vec: Vec<Command> = commands.clone().into();
+            let assembled_program = command_processor::assemble_program(&commands_vec, &Vec::new()).unwrap();
+            app_state.saved_programs.push(ProgramInfo {
+                name,
+                content,
+                commands,
+                assembled_program,
+            });
+        }
+    }
     app_state.editor_mode = EditorMode::LoadList;
     app_state.program_list_selected = 0;
 }
 
-fn save_program_prompt(app_state: &mut AppState) {
-    if app_state.editor_text.is_empty() {
-        app_state.last_message = Some("Cannot save empty program".to_string());
+fn save_program_with_name(app_state: &mut AppState) {
+    let program_name = app_state.program_name_input.trim().to_string();
+    let file_path = Path::new("programs").join(format!("{}.arc", program_name));
+
+    if let Err(e) = fs::write(&file_path, &app_state.editor_text) {
+        app_state.last_message = Some(format!("Failed to save program: {}", e));
         app_state.message_is_error = true;
         return;
     }
-    
-    app_state.program_name_input.clear();
-    app_state.program_name_cursor = 0;
-    
-    // If we're editing an existing program, pre-fill the name
-    if let Some(index) = app_state.editing_program_index {
-        app_state.program_name_input = app_state.saved_programs[index].name.clone();
-        app_state.program_name_cursor = app_state.program_name_input.len();
-    }
-    
-    app_state.editor_mode = EditorMode::Naming;
-}
-
-fn save_program_with_name(app_state: &mut AppState) {
-    let program_name = app_state.program_name_input.trim().to_string();
-    
-    // Parse the program text into commands
-    let lines: Vec<&str> = app_state.editor_text.lines().collect();
-    let mut commands = VecDeque::new();
-    
-    for line in lines {
-        let trimmed_line = line.trim();
-        if trimmed_line.is_empty() {
-            continue;
-        }
-        if let Ok(command) = parse_command(trimmed_line) {
-            commands.push_back(command);
-        }
-    }
-
-    let commands_vec: Vec<Command> = commands.clone().into();
-    let machine_code = match command_processor::assemble_program(&commands_vec) {
-        Ok(code) => code,
-        Err(e) => {
-            app_state.last_message = Some(e);
-            app_state.message_is_error = true;
-            return;
-        }
-    };
-    
-    // Check if we already have a program with this name (and it's not the one we're editing)
-    if let Some(existing_index) = app_state.saved_programs.iter().position(|p| p.name == program_name) {
-        if app_state.editing_program_index != Some(existing_index) {
-            app_state.last_message = Some(format!("A program with name '{}' already exists", program_name));
-            app_state.message_is_error = true;
-            return;
-        }
-    }
-    
-    if let Some(index) = app_state.editing_program_index {
-        // Update existing program
-        app_state.saved_programs[index] = ProgramInfo {
-            name: program_name.clone(),
-            content: app_state.editor_text.clone(),
-            commands,
-            machine_code,
-        };
-    } else {
-        // Add new program
-        app_state.saved_programs.push(ProgramInfo {
-            name: program_name.clone(),
-            content: app_state.editor_text.clone(),
-            commands,
-            machine_code,
-        });
-    }
-    
-    app_state.loaded_program = Some(program_name.clone());
-    app_state.loaded_program_size = app_state.editor_text.len();
-    app_state.last_message = Some(format!("Program '{}' saved and assembled successfully", program_name));
-    app_state.message_is_error = false;
-    app_state.editing_program_index = None;
 }
 
 fn load_selected_program(app_state: &mut AppState) {
@@ -774,8 +886,13 @@ fn load_selected_program(app_state: &mut AppState) {
     
     let selected_program = &app_state.saved_programs[app_state.program_list_selected];
     
+    // Reset CPU and memory for the new program
+    app_state.cpu.reset();
+    app_state.work_memory = WorkMemory::new(app_state.work_memory.size);
+
     app_state.command_queue = selected_program.commands.clone();
-    app_state.work_memory.load_program(0, &selected_program.machine_code).unwrap();
+    app_state.work_memory.load_program(TEXT_START, &selected_program.assembled_program.text).unwrap();
+    app_state.work_memory.load_data(DATA_START, &selected_program.assembled_program.data).unwrap();
     
     app_state.loaded_program = Some(selected_program.name.clone());
     app_state.loaded_program_size = selected_program.content.len();
