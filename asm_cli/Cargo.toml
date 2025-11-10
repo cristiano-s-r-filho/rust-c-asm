@@ -1,9 +1,70 @@
 [package]
-name = "asm-cli"
-version = "1.0.0"
+name = "arc-emulator"
+version = "1.0.5"
 edition = "2021"
+description = "A professional emulator and assembler for the ARC (Advanced RISC Computer) architecture"
+authors = ["Cristiano S.R. Filho <cristiano.sr.filho@proton.me>"]
+license = "MIT"
+readme = "../README.md"
+repository = "https://github.com/cristiano-s-r-f/rust-c-asm"
+documentation = "https://docs.rs/asm_cli"
+keywords = ["emulator", "assembler", "risc", "tui", "terminal"]
+categories = ["command-line-utilities", "emulators"]
+exclude = [
+    ".gemini/",
+]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-ratatui = "0.29.0"  
-crossterm = "0.29.0"
-clap = { version = "4.5.49", features = ["derive"] }
+# TUI Framework 
+ratatui = { version = "0.29.0" }
+# Terminal handling
+crossterm = { version = "0.28.1", features = ["event-stream"] }
+
+# Configuration
+serde = { version = "1.0.227", features = ["derive"] }
+toml = "0.9.8"
+
+# Utilities
+dirs = "6.0.0"
+anyhow = "1.0.0"
+thiserror = "2.0.17"
+
+walkdir = "2.5.0"
+text2art = "1.0.2"
+ansimage = "0.1.4"
+image = "0.25.1"
+
+tachyonfx = "0.1.0"
+rand = "0.8.5"
+
+# Optional: Enhanced text editor
+edtui = { version = "0.9.8", optional = true }
+tui-textarea = { version = "0.7.0"}
+chrono = "0.4"
+clap = { version = "4.0", features = ["derive"] }
+
+[dev-dependencies]
+tempfile = "3.3.0"
+rstest = "0.26.1"
+
+[lib]
+name = "arc_emulator"
+path = "src/lib.rs"
+
+[[bin]]
+name = "arcs"
+path = "src/main.rs"
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = 'abort'

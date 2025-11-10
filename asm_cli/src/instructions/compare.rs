@@ -1,8 +1,78 @@
+//! # Comparison and Jump Instructions Module
+//!
+//! This module provides the implementation for various comparison and jump
+//! instructions for the ARC CPU. These instructions allow for conditional
+//! and unconditional control flow changes based on register values and CPU flags.
+
 use crate::chips::cpu::CPU;
 use crate::memory::main_memory::WorkMemory;
-use crate::utils::operands::Operand;
+use crate::utils::assembler::operands::Operand;
 use crate::memory::registers::Reg;
 
+/// Executes the `CMPW` instruction, performing a floating-point comparison.
+///
+/// This instruction compares the values of `op1` and `op2` by effectively
+/// subtracting `op2` from `op1` and updating the CPU's flags (zero, sign)
+/// based on the result, without storing the result itself.
+///
+/// # Arguments
+///
+/// * `cpu` - A mutable reference to the `CPU` state.
+/// * `op1` - The first operand, which can be a register, immediate value, or memory address.
+/// * `op2` - The second operand, which can be a register, immediate value, or memory address.
+/// * `memory` - A mutable reference to the `WorkMemory`.
+///
+/// # Returns
+///
+/// * `Result<(), String>` - `Ok(())` on successful execution, or an error message on failure.
+/// Executes the `CMPW` instruction, performing a floating-point comparison.
+///
+/// This instruction compares the values of `op1` and `op2` by effectively
+/// subtracting `op2` from `op1` and updating the CPU's flags (zero, sign)
+/// based on the result, without storing the result itself.
+///
+/// # Arguments
+///
+/// * `cpu` - A mutable reference to the `CPU` state.
+/// * `op1` - The first operand, which can be a register, immediate value, or memory address.
+/// * `op2` - The second operand, which can be a register, immediate value, or memory address.
+/// * `memory` - A mutable reference to the `WorkMemory`.
+///
+/// # Returns
+///
+/// * `Result<(), String>` - `Ok(())` on successful execution, or an error message on failure.
+///
+/// # Examples
+///
+/// ```
+/// use arc_emulator::chips::cpu::CPU;
+/// use arc_emulator::memory::main_memory::WorkMemory;
+/// use arc_emulator::utils::assembler::operands::Operand;
+/// use arc_emulator::memory::registers::Reg;
+/// use arc_emulator::instructions::compare;
+///
+/// let mut cpu = CPU::new();
+/// let mut memory = WorkMemory::new(1024);
+///
+/// // Compare AX (10.0) and BX (5.0) -> AX > BX
+/// cpu.registers.set(&Reg::AX, 10.0f32.to_bits()).unwrap();
+/// cpu.registers.set(&Reg::BX, 5.0f32.to_bits()).unwrap();
+/// compare::execute_cmpw(&mut cpu, &Operand::Register(Reg::AX), &Operand::Register(Reg::BX), &mut memory).unwrap();
+/// assert!(!cpu.registers.get_flag("zero").unwrap()); // Not equal
+/// assert!(!cpu.registers.get_flag("sign").unwrap()); // Positive difference
+///
+/// // Compare AX (5.0) and BX (10.0) -> AX < BX
+/// cpu.registers.set(&Reg::AX, 5.0f32.to_bits()).unwrap();
+/// cpu.registers.set(&Reg::BX, 10.0f32.to_bits()).unwrap();
+/// compare::execute_cmpw(&mut cpu, &Operand::Register(Reg::AX), &Operand::Register(Reg::BX), &mut memory).unwrap();
+/// assert!(!cpu.registers.get_flag("zero").unwrap()); // Not equal
+/// assert!(cpu.registers.get_flag("sign").unwrap());  // Negative difference
+///
+/// // Compare AX (10.0) and 10.0 (immediate) -> AX == 10.0
+/// cpu.registers.set(&Reg::AX, 10.0f32.to_bits()).unwrap();
+/// compare::execute_cmpw(&mut cpu, &Operand::Register(Reg::AX), &Operand::Immediate(10), &mut memory).unwrap();
+/// assert!(cpu.registers.get_flag("zero").unwrap()); // Equal
+/// ```
 pub fn execute_cmpw(cpu: &mut CPU, op1: &Operand, op2: &Operand, memory: &mut WorkMemory) -> Result<(), String> {
     let value1_bits = match op1 {
         Operand::Register(reg) => cpu.registers.get(reg)?,
@@ -27,6 +97,20 @@ pub fn execute_cmpw(cpu: &mut CPU, op1: &Operand, op2: &Operand, memory: &mut Wo
     Ok(())
 }
 
+/// Executes the `JMP` instruction, performing an unconditional jump.
+///
+/// The program counter (`PC`) is set to the address specified by `op1`.
+///
+/// # Arguments
+///
+/// * `cpu` - A mutable reference to the `CPU` state.
+/// * `op1` - The destination operand, which can be a label, immediate value, address, or register.
+/// * `_op2` - The second operand (unused in this instruction).
+/// * `_memory` - A mutable reference to the `WorkMemory` (unused in this instruction).
+///
+/// # Returns
+///
+/// * `Result<(), String>` - `Ok(())` on successful execution, or an error message on failure.
 pub fn execute_jmp(cpu: &mut CPU, op1: &Operand, _op2: &Operand, _memory: &mut WorkMemory) -> Result<(), String> {
     let address = match op1 {
         Operand::Label(label) => {
@@ -35,13 +119,27 @@ pub fn execute_jmp(cpu: &mut CPU, op1: &Operand, _op2: &Operand, _memory: &mut W
         Operand::Immediate(imm) => *imm as u32,
         Operand::Address(addr) => *addr,
         Operand::Register(reg) => cpu.registers.get(reg)?,
-        Operand::String(_) => return Err("JMP does not support string operands".to_string()),
-        Operand::None => return Err("JMP requires an operand".to_string()),
+        _ => return Err("JMP requires a label, immediate, address, or register operand".to_string()),
     };
     
     cpu.registers.set(&Reg::PC, address)
 }
 
+/// Executes the `CALL` instruction, performing a subroutine call.
+///
+/// The current program counter (return address) is pushed onto the stack,
+/// and then the program counter is set to the address specified by `op1`.
+///
+/// # Arguments
+///
+/// * `cpu` - A mutable reference to the `CPU` state.
+/// * `op1` - The destination operand, which can be a label, immediate value, address, or register.
+/// * `_op2` - The second operand (unused in this instruction).
+/// * `memory` - A mutable reference to the `WorkMemory` for stack operations.
+///
+/// # Returns
+///
+/// * `Result<(), String>` - `Ok(())` on successful execution, or an error message on failure.
 pub fn execute_call(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut WorkMemory) -> Result<(), String> {
     let address = match op1 {
         Operand::Label(label) => {
@@ -50,8 +148,7 @@ pub fn execute_call(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut W
         Operand::Immediate(imm) => *imm as u32,
         Operand::Address(addr) => *addr,
         Operand::Register(reg) => cpu.registers.get(reg)?,
-        Operand::String(_) => return Err("CALL does not support string operands".to_string()),
-        Operand::None => return Err("CALL requires an operand".to_string()),
+        _ => return Err("CALL requires a label, immediate, address, or register operand".to_string()),
     };
     
     // Push return address (current PC + 4) onto the stack
@@ -66,6 +163,21 @@ pub fn execute_call(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut W
     cpu.registers.set(&Reg::PC, address)
 }
 
+/// Executes the `RET` instruction, returning from a subroutine.
+///
+/// The return address is popped from the stack, and the program counter (`PC`)
+/// is set to this address.
+///
+/// # Arguments
+///
+/// * `cpu` - A mutable reference to the `CPU` state.
+/// * `_op1` - The first operand (unused in this instruction).
+/// * `_op2` - The second operand (unused in this instruction).
+/// * `memory` - A mutable reference to the `WorkMemory` for stack operations.
+///
+/// # Returns
+///
+/// * `Result<(), String>` - `Ok(())` on successful execution, or an error message on failure.
 pub fn execute_ret(cpu: &mut CPU, _op1: &Operand, _op2: &Operand, memory: &mut WorkMemory) -> Result<(), String> {
     // Pop return address from the stack
     let sp = cpu.registers.get(&Reg::SP)?;
@@ -79,6 +191,21 @@ pub fn execute_ret(cpu: &mut CPU, _op1: &Operand, _op2: &Operand, memory: &mut W
 }
 
 // Conditional jump implementations
+/// Executes the `JE` (Jump if Equal) instruction.
+///
+/// If the CPU's "zero" flag is set (indicating a previous comparison resulted in equality),
+/// an unconditional jump to the address specified by `op1` is performed.
+///
+/// # Arguments
+///
+/// * `cpu` - A mutable reference to the `CPU` state.
+/// * `op1` - The destination operand for the jump.
+/// * `_op2` - The second operand (unused in this instruction).
+/// * `memory` - A mutable reference to the `WorkMemory`.
+///
+/// # Returns
+///
+/// * `Result<(), String>` - `Ok(())` on successful execution, or an error message on failure.
 pub fn execute_je(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut WorkMemory) -> Result<(), String> {
     if cpu.registers.get_flag("zero")? {
         execute_jmp(cpu, op1, &Operand::None, memory)
@@ -87,6 +214,21 @@ pub fn execute_je(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut Wor
     }
 }
 
+/// Executes the `JNE` (Jump if Not Equal) instruction.
+///
+/// If the CPU's "zero" flag is not set (indicating a previous comparison resulted in inequality),
+/// an unconditional jump to the address specified by `op1` is performed.
+///
+/// # Arguments
+///
+/// * `cpu` - A mutable reference to the `CPU` state.
+/// * `op1` - The destination operand for the jump.
+/// * `_op2` - The second operand (unused in this instruction).
+/// * `memory` - A mutable reference to the `WorkMemory`.
+///
+/// # Returns
+///
+/// * `Result<(), String>` - `Ok(())` on successful execution, or an error message on failure.
 pub fn execute_jne(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut WorkMemory) -> Result<(), String> {
     if !cpu.registers.get_flag("zero")? {
         execute_jmp(cpu, op1, &Operand::None, memory)
@@ -95,6 +237,22 @@ pub fn execute_jne(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut Wo
     }
 }
 
+/// Executes the `JGT` (Jump if Greater Than) instruction.
+///
+/// If the CPU's "zero" flag is not set AND the "sign" flag is not set
+/// (indicating a previous comparison resulted in a positive difference),
+/// an unconditional jump to the address specified by `op1` is performed.
+///
+/// # Arguments
+///
+/// * `cpu` - A mutable reference to the `CPU` state.
+/// * `op1` - The destination operand for the jump.
+/// * `_op2` - The second operand (unused in this instruction).
+/// * `memory` - A mutable reference to the `WorkMemory`.
+///
+/// # Returns
+///
+/// * `Result<(), String>` - `Ok(())` on successful execution, or an error message on failure.
 pub fn execute_jgt(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut WorkMemory) -> Result<(), String> {
     // Jump if greater than (for floats: not zero and not sign)
     let zero = cpu.registers.get_flag("zero")?;
@@ -106,6 +264,22 @@ pub fn execute_jgt(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut Wo
     }
 }
 
+/// Executes the `JGE` (Jump if Greater Than or Equal) instruction.
+///
+/// If the CPU's "sign" flag is not set (indicating a previous comparison resulted
+/// in a non-negative difference), an unconditional jump to the address specified
+/// by `op1` is performed.
+///
+/// # Arguments
+///
+/// * `cpu` - A mutable reference to the `CPU` state.
+/// * `op1` - The destination operand for the jump.
+/// * `_op2` - The second operand (unused in this instruction).
+/// * `memory` - A mutable reference to the `WorkMemory`.
+///
+/// # Returns
+///
+/// * `Result<(), String>` - `Ok(())` on successful execution, or an error message on failure.
 pub fn execute_jge(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut WorkMemory) -> Result<(), String> {
     // Jump if greater than or equal (for floats: not sign)
     let sign = cpu.registers.get_flag("sign")?;
@@ -116,6 +290,22 @@ pub fn execute_jge(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut Wo
     }
 }
 
+/// Executes the `JLT` (Jump if Less Than) instruction.
+///
+/// If the CPU's "zero" flag is not set AND the "sign" flag is set
+/// (indicating a previous comparison resulted in a negative difference),
+/// an unconditional jump to the address specified by `op1` is performed.
+///
+/// # Arguments
+///
+/// * `cpu` - A mutable reference to the `CPU` state.
+/// * `op1` - The destination operand for the jump.
+/// * `_op2` - The second operand (unused in this instruction).
+/// * `memory` - A mutable reference to the `WorkMemory`.
+///
+/// # Returns
+///
+/// * `Result<(), String>` - `Ok(())` on successful execution, or an error message on failure.
 pub fn execute_jlt(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut WorkMemory) -> Result<(), String> {
     // Jump if less than (for floats: not zero and sign)
     let zero = cpu.registers.get_flag("zero")?;
@@ -127,6 +317,22 @@ pub fn execute_jlt(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut Wo
     }
 }
 
+/// Executes the `JLE` (Jump if Less Than or Equal) instruction.
+///
+/// If the CPU's "zero" flag is set OR the "sign" flag is set
+/// (indicating a previous comparison resulted in a non-positive difference),
+/// an unconditional jump to the address specified by `op1` is performed.
+///
+/// # Arguments
+///
+/// * `cpu` - A mutable reference to the `CPU` state.
+/// * `op1` - The destination operand for the jump.
+/// * `_op2` - The second operand (unused in this instruction).
+/// * `memory` - A mutable reference to the `WorkMemory`.
+///
+/// # Returns
+///
+/// * `Result<(), String>` - `Ok(())` on successful execution, or an error message on failure.
 pub fn execute_jle(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut WorkMemory) -> Result<(), String> {
     // Jump if less than or equal (for floats: zero or sign)
     let zero = cpu.registers.get_flag("zero")?;
@@ -138,6 +344,21 @@ pub fn execute_jle(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut Wo
     }
 }
 
+/// Executes the `JS` (Jump if Sign) instruction.
+///
+/// If the CPU's "sign" flag is set (indicating a previous operation resulted in a negative value),
+/// an unconditional jump to the address specified by `op1` is performed.
+///
+/// # Arguments
+///
+/// * `cpu` - A mutable reference to the `CPU` state.
+/// * `op1` - The destination operand for the jump.
+/// * `_op2` - The second operand (unused in this instruction).
+/// * `memory` - A mutable reference to the `WorkMemory`.
+///
+/// # Returns
+///
+/// * `Result<(), String>` - `Ok(())` on successful execution, or an error message on failure.
 pub fn execute_js(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut WorkMemory) -> Result<(), String> {
     // Jump if sign (negative)
     if cpu.registers.get_flag("sign")? {
@@ -147,6 +368,21 @@ pub fn execute_js(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut Wor
     }
 }
 
+/// Executes the `JCO` (Jump if Carry or Overflow) instruction.
+///
+/// If either the CPU's "carry" flag or "overflow" flag is set,
+/// an unconditional jump to the address specified by `op1` is performed.
+///
+/// # Arguments
+///
+/// * `cpu` - A mutable reference to the `CPU` state.
+/// * `op1` - The destination operand for the jump.
+/// * `_op2` - The second operand (unused in this instruction).
+/// * `memory` - A mutable reference to the `WorkMemory`.
+///
+/// # Returns
+///
+/// * `Result<(), String>` - `Ok(())` on successful execution, or an error message on failure.
 pub fn execute_jco(cpu: &mut CPU, op1: &Operand, _op2: &Operand, memory: &mut WorkMemory) -> Result<(), String> {
     // Jump if carry or overflow (no longer standard for floats, but kept for compatibility if needed)
     let carry = cpu.registers.get_flag("carry")?;
@@ -164,7 +400,7 @@ mod compare_test {
     use super::*;
     use crate::chips::cpu::CPU;
     use crate::memory::main_memory::WorkMemory;
-    use crate::utils::operands::Operand;
+    use crate::utils::assembler::operands::Operand;
     use crate::memory::registers::Reg;
 
     #[test]
